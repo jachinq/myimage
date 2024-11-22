@@ -7,6 +7,7 @@ use std::{
     fs::{remove_file, File},
     io::{BufWriter, Write},
     path::Path,
+    str::FromStr,
     thread,
 };
 use tiny_http::{Header, Request, Response, Server};
@@ -211,7 +212,6 @@ fn handle_request(url: &str, params: HashMap<String, String>) -> String {
         "/test" => test(),
         "/getAll" => get_all(params),
         "/upload" => upload(params),
-        "/compressUpload" => compress_upload(params),
         "/delete" => delete(params),
         "/deleteAll" => delete_all(params),
         _ => method_not_found(params, url),
@@ -229,6 +229,20 @@ fn method_not_found(params: HashMap<String, String>, url: &str) -> String {
     .json()
 }
 
+fn get_num<T: ToString + FromStr>(
+    params: &HashMap<String, String>,
+    key: &str,
+    default_value: T,
+) -> T {
+    let binding = default_value.to_string();
+    let size = params.get(key).or(Some(&binding)).unwrap();
+    if let Ok(size) = size.parse() {
+        size
+    } else {
+        default_value
+    }
+}
+
 fn test() -> String {
     println!("匹配到了 /hey");
 
@@ -242,197 +256,151 @@ fn test() -> String {
 }
 
 fn upload(params: HashMap<String, String>) -> String {
-    println!("匹配到了 /upload");
     // println!("{:?}", params);
+    let quality = get_num(&params, "quality", 40);
+    // 先判断是否需要压缩图片
+    let origin_upload = quality >= 100 || quality < 10;
 
-    let file_type = match params.get("type") {
-        Some(file_type) => file_type.replace("image/", ""),
-        None => "png".to_string(),
+    let file_type = if origin_upload {
+        match params.get("type") {
+            Some(file_type) => file_type.replace("image/", ""),
+            None => "png".to_string(),
+        }
+    } else {
+        "webp".to_string()
     };
+    println!("匹配到了 /upload, qulity={} file_type={} use_origin={}", quality, file_type, origin_upload);
+
     let name = match params.get("name") {
         Some(name) => name.to_string(),
         None => "".to_string(),
     };
 
-    let default_value = "0".to_string();
-    let size = params.get("size").or(Some(&default_value)).unwrap();
-    let size = if let Ok(size) = size.parse() { size } else { 0 };
+    let size = get_num(&params, "size", 0);
 
-    if let Some(data) = params.get("data") {
-        println!("data={}", file_type);
-        let buf = image_base64::from_base64(data.to_string());
-
-        let fmt = "%Y%m";
-        let year_month = chrono::Local::now().format(fmt).to_string();
-        let path = format!("{}/web/res/{}", utils::current_dir(), year_month);
-        utils::check_dir_and_create(&path);
-
-        let uuid = &uuid::Uuid::new_v4().to_string()[0..8];
-        let url = format!("./res/{}/{}.{}", year_month, uuid, file_type);
-        let file_path = format!("./web/res/{}/{}.{}", year_month, uuid, file_type);
-        let mut url_thumb = format!("./res/{}/{}_thumb.{}", year_month, uuid, file_type);
-        let file_path_thumbnail = format!("./web/res/{}/{}_thumb.{}", year_month, uuid, file_type);
-        // let file_path = format!("{}/web/res/{}.{}", current_dir(), uuid, file_type);
-
-        if let Ok(file) = File::create(file_path.clone()) {
-            match BufWriter::new(file).write_all(&buf) {
-                Ok(_) => {
-                    let (mut width, mut height) = (0, 0);
-
-                    let mut proc_thumb_faile = false;
-                    if let Ok(img) = image::load_from_memory(&buf) {
-                        width = img.dimensions().0;
-                        height = img.dimensions().1;
-                        if let Some(img) = compress_image(&img, size) {
-                            if let Err(result) = save_thumbnail(&img, &file_path_thumbnail) {
-                                println!("save thumbnail err={}", result);
-                                proc_thumb_faile = true;
-                            }
-                        } else {
-                            proc_thumb_faile = true;
-                        }
-                    } else {
-                        proc_thumb_faile = true;
-                    }
-                    if proc_thumb_faile {
-                        url_thumb = url.clone();
-                    }
-
-                    let data = Data {
-                        name,
-                        url,
-                        thumb: url_thumb,
-                        time: chrono::Local::now().timestamp(),
-                        size: size as i64,
-                        width: width as i64,
-                        height: height as i64,
-                    };
-                    return Data::add(data).json();
-                }
-                Err(e) => println!("save err {}", e),
-            }
-        }
-    }
-
-    ReqResult {
+    let error_result = ReqResult {
         success: false,
         msg: "上传失败".to_string(),
         code: -1,
         data: "".to_string(),
     }
-    .json()
-}
+    .json();
 
-// 压缩上传
-fn compress_upload(params: HashMap<String, String>) -> String {
-    println!("匹配到了 /upload");
-    // println!("{:?}", params);
+    let data = params.get("data");
+    if data.is_none() {
+        return error_result;
+    }
 
-    let file_type = "webp";
-    let name = match params.get("name") {
-        Some(name) => name.to_string(),
-        None => "".to_string(),
+    let data = params.get("data").expect("query data is none.");
+    let start_change_base64 = std::time::Instant::now();
+    let mut buf = image_base64::from_base64(data.to_string());
+    let end_change_base64 = std::time::Instant::now();
+    println!(
+        "Info: change base64 time={:?}",
+        end_change_base64.duration_since(start_change_base64)
+    );
+
+    let fmt = "%Y%m";
+    let year_month = chrono::Local::now().format(fmt).to_string();
+    let path = format!("{}/web/res/{}", utils::current_dir(), year_month);
+    utils::check_dir_and_create(&path);
+
+    let uuid = &uuid::Uuid::new_v4().to_string()[0..8]; // 截取前8位作为文件名
+    let url = format!("./res/{}/{}.{}", year_month, uuid, file_type);
+    let mut url_thumb = format!("./res/{}/{}_thumb.{}", year_month, uuid, file_type);
+    let file_path = format!("./web/{}", url.replace("./", ""));
+    let file_path_thumbnail = format!("./web/{}", url_thumb.replace("./", ""));
+
+    // 从参数中加载图片
+    let start_load_from_query = std::time::Instant::now();
+    let load_img_result = image::load_from_memory(&buf);
+    if let Err(e) = load_img_result {
+        println!("load img from query err {}", e);
+        return error_result;
+    }
+    let img = load_img_result.expect("load img from query error.");
+    let end_load_from_query = std::time::Instant::now();
+    println!(
+        "Info: load from query time={:?}",
+        end_load_from_query.duration_since(start_load_from_query)
+    );
+
+    // 压缩原图
+    if !origin_upload {
+        let start_compress = std::time::Instant::now();
+        let compress_result = compress_img(&img, quality);
+        if let Err(e) = compress_result {
+            println!("compress img err={}", e);
+            return error_result;
+        }
+        let webp = compress_result.expect("compress img error.");
+        let end_compress = std::time::Instant::now();
+        println!(
+            "Info: compress time={:?}",
+            end_compress.duration_since(start_compress)
+        );
+        buf = webp
+    }
+
+    let upload_result = match save_img(&buf, &file_path) {
+        Err(e) => Err(e.to_string()),
+        Ok(save_size) => Ok(save_size),
     };
 
-    // let default_value = "0".to_string();
-    // let size = params.get("size").or(Some(&default_value)).unwrap();
-    // let size = if let Ok(size) = size.parse() { size } else { 0 };
+    if let Err(err) = upload_result {
+        println!("save err {}", err);
+        return error_result;
+    }
 
-    if let Some(data) = params.get("data") {
-        println!("data={}", file_type);
-        let buf = image_base64::from_base64(data.to_string());
+    let real_size = upload_result.expect("upload error.");
+    if origin_upload && real_size != size {
+        println!(
+            "Warn: size not match, save_size={}, query_size={}",
+            real_size, size
+        );
+    }
 
-        let fmt = "%Y%m";
-        let year_month = chrono::Local::now().format(fmt).to_string();
-        let path = format!("{}/web/res/{}", utils::current_dir(), year_month);
-        utils::check_dir_and_create(&path);
-
-        let uuid = &uuid::Uuid::new_v4().to_string()[0..8];
-        let url = format!("./res/{}/{}.{}", year_month, uuid, file_type);
-        let file_path = format!("./web/res/{}/{}.{}", year_month, uuid, file_type);
-        let mut url_thumb = format!("./res/{}/{}_thumb.{}", year_month, uuid, file_type);
-        let file_path_thumbnail = format!("./web/res/{}/{}_thumb.{}", year_month, uuid, file_type);
-        // let file_path = format!("{}/web/res/{}.{}", current_dir(), uuid, file_type);
-
-        let start_load_from_query = std::time::Instant::now();
-        if let Ok(file) = File::create(file_path.clone()) {
-            match image::load_from_memory(&buf) {
-                Ok(img) => {
-                    let end_load_from_query = std::time::Instant::now();
-                    println!(
-                        "load from query time={:?}",
-                        end_load_from_query.duration_since(start_load_from_query)
-                    );
-
-                    let start_compress = std::time::Instant::now();
-
-                    let mut out = BufWriter::new(file);
-                    match webp::Encoder::from_image(&img) {
-                        Ok(encoder) => {
-                            let webp = encoder.encode(40f32);
-                            let end_compress = std::time::Instant::now();
-                            println!(
-                                "compress time={:?}",
-                                end_compress.duration_since(start_compress)
-                            );
-                            println!("compress success; url={}", url);
-                            // Define and write the WebP-encoded file to a given path
-                            if let Ok(size) = out.write(&webp) {
-                                let mut proc_thumb_faile = false;
-                                if let Some(img) = compress_image(&img, size) {
-                                    if let Err(result) = save_thumbnail(&img, &file_path_thumbnail)
-                                    {
-                                        println!("save thumbnail err={}", result);
-                                        proc_thumb_faile = true;
-                                    }
-                                } else {
-                                    proc_thumb_faile = true;
-                                }
-                                if proc_thumb_faile {
-                                    url_thumb = url.clone();
-                                }
-
-                                let (width, height) = img.dimensions();
-
-                                let data = Data {
-                                    name,
-                                    url,
-                                    thumb: url_thumb,
-                                    time: chrono::Local::now().timestamp(),
-                                    size: size as i64,
-                                    width: width as i64,
-                                    height: height as i64,
-                                };
-                                return Data::add(data).json();
-                            }
-                        }
-                        Err(e) => {
-                            println!("compress error {}", e);
-                        }
-                    };
-                }
-                Err(e) => {
-                    println!("save err {}", e);
+    let (width, height) = img.dimensions();
+    let mut proc_thumb_faile = false;
+    if let Some(img) = resize_image(&img, real_size) {
+        match compress_img(&img, quality) {
+            Err(result) => {
+                println!("compress img err={}", result);
+                proc_thumb_faile = true;
+            }
+            Ok(data) => {
+                if let Err(e) = save_img(&data, &file_path_thumbnail) {
+                    println!("save thumbnail err={}", e);
+                    proc_thumb_faile = true;
                 }
             }
         }
+    } else {
+        proc_thumb_faile = true;
+    }
+    if proc_thumb_faile {
+        url_thumb = url.clone();
     }
 
-    ReqResult {
-        success: false,
-        msg: "上传失败".to_string(),
-        code: -1,
-        data: "".to_string(),
-    }
-    .json()
+    let data = Data {
+        name,
+        url,
+        thumb: url_thumb,
+        time: chrono::Local::now().timestamp(),
+        size: real_size as i64,
+        width: width as i64,
+        height: height as i64,
+    };
+    // 上传成功，索引数据落盘
+    Data::add(data).json()
 }
 
 // 缩小图片
-fn compress_image(img: &DynamicImage, size: usize) -> Option<DynamicImage> {
+fn resize_image(img: &DynamicImage, size: usize) -> Option<DynamicImage> {
     let thumbnail_size = 300;
     let (width, height) = img.dimensions();
 
-    if width <= thumbnail_size || height <= thumbnail_size || size <= 150_000 {
+    if width <= thumbnail_size || height <= thumbnail_size || size <= 50_000 {
         return None;
     }
 
@@ -451,32 +419,36 @@ fn compress_image(img: &DynamicImage, size: usize) -> Option<DynamicImage> {
     Some(img.resize(nwidth, nheight, image::imageops::FilterType::Nearest))
 }
 
-// 生成缩略图
-fn save_thumbnail(img: &DynamicImage, file_path_thumbnail: &str) -> Result<(), String> {
-    let start_save_thumbnail = std::time::Instant::now();
+// 根据 img 压缩成 webp 格式
+fn compress_img(img: &DynamicImage, qulity: i8) -> Result<Vec<u8>, String> {
     match webp::Encoder::from_image(img) {
-        Err(err) => return Err(err.to_string()),
+        Err(err) => Err(err.to_string()),
         Ok(encoder) => {
-            let webp = encoder.encode(40f32);
-            match File::create(file_path_thumbnail) {
-                Err(err) => return Err(err.to_string()),
-                Ok(file) => match BufWriter::new(file).write(&webp) {
-                    Err(err) => return Err(err.to_string()),
-                    Ok(size) => {
-                        let end_save_thumbnail = std::time::Instant::now();
-                        println!(
-                            "save thumbnail time={:?}, file_size={}, file_path={}",
-                            end_save_thumbnail.duration_since(start_save_thumbnail),
-                            size,
-                            file_path_thumbnail
-                        );
-                    }
-                },
-            }
+            let webp = encoder.encode(qulity as f32);
+            Ok(webp.to_vec())
         }
-    };
+    }
+}
 
-    Ok(())
+// 保存图片到指定路径
+fn save_img(buf: &[u8], file_path: &str) -> Result<usize, String> {
+    let start_save_img = std::time::Instant::now();
+    match File::create(file_path) {
+        Err(err) => return Err(err.to_string()),
+        Ok(file) => match BufWriter::new(file).write(&buf) {
+            Err(err) => return Err(err.to_string()),
+            Ok(size) => {
+                let end_save_img = std::time::Instant::now();
+                println!(
+                    "Info: save img time={:?}, file_size={}, file_path={}",
+                    end_save_img.duration_since(start_save_img),
+                    size,
+                    file_path
+                );
+                return Ok(size);
+            }
+        },
+    }
 }
 
 fn delete(params: HashMap<String, String>) -> String {
