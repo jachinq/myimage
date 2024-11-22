@@ -1,0 +1,18 @@
+[package]
+name = "myimage"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.196", features = ["derive"] }
+serde_derive = "1.0.196"
+serde_json = "1.0.113"
+tiny_http = "0.11" # https://docs.rs/tiny_http/latest/tiny_http/
+rusqlite = { version = "0.29.0", features = ["bundled"] }
+urlencoding = "2.1.3" # https://docs.rs/urlencoding/latest/urlencoding/
+image-base64 = "0.1.0"
+uuid = { version="1.10.0", features = ["v4", "fast-rng"]}
+chrono = "0.4.38"
+image = "0.25.5"
+#libwebp = "0.1.2"
+webp = "0.3.0"
