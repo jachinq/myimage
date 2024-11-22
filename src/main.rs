@@ -19,7 +19,7 @@ const THUMB_QUALITY: i8 = 10;
 fn main() {
     sqlite::init_tables();
 
-    match Server::http(format!("0.0.0.0::{}", PORT)) {
+    match Server::http(format!("0.0.0.0:{}", PORT)) {
         Err(_) => println!("start server error;check port is alread used?"),
         Ok(server) => {
             let html_dir = "./web/"; // 指定你的静态文件目录
@@ -309,7 +309,9 @@ fn upload(params: HashMap<String, String>) -> String {
     let fmt = "%Y%m";
     let year_month = chrono::Local::now().format(fmt).to_string();
     let path = format!("{}/web/res/{}", utils::current_dir(), year_month);
+    let path_thumb = format!("{}/web/res/thumb/{}", utils::current_dir(), year_month);
     utils::check_dir_and_create(&path);
+    utils::check_dir_and_create(&path_thumb);
 
     let uuid = &uuid::Uuid::new_v4().to_string()[0..8]; // 截取前8位作为文件名
     let url = format!("./res/{}/{}.{}", year_month, uuid, file_type);
@@ -368,21 +370,19 @@ fn upload(params: HashMap<String, String>) -> String {
 
     let (width, height) = img.dimensions();
     let mut proc_thumb_faile = false;
-    if let Some(img) = resize_image(&img, real_size, origin_upload) {
-        match compress_img(&img, THUMB_QUALITY) {
-            Err(result) => {
-                println!("compress img err={}", result);
+    let img_box = Box::new(img);
+    let img = resize_image(img_box, origin_upload);
+    match compress_img(&img, THUMB_QUALITY) {
+        Err(result) => {
+            println!("compress img err={}", result);
+            proc_thumb_faile = true;
+        }
+        Ok(data) => {
+            if let Err(e) = save_img(&data, &file_path_thumbnail) {
+                println!("save thumbnail err={}", e);
                 proc_thumb_faile = true;
             }
-            Ok(data) => {
-                if let Err(e) = save_img(&data, &file_path_thumbnail) {
-                    println!("save thumbnail err={}", e);
-                    proc_thumb_faile = true;
-                }
-            }
         }
-    } else {
-        proc_thumb_faile = true;
     }
     if proc_thumb_faile {
         url_thumb = url.clone();
@@ -402,12 +402,12 @@ fn upload(params: HashMap<String, String>) -> String {
 }
 
 // 缩小图片
-fn resize_image(img: &DynamicImage, size: usize, process_origin: bool) -> Option<DynamicImage> {
+fn resize_image(img: Box<DynamicImage>, process_origin: bool) -> Box<DynamicImage> {
     let thumbnail_size = 300;
     let (width, height) = img.dimensions();
 
-    if width <= thumbnail_size || height <= thumbnail_size || size <= 50_000 {
-        return None;
+    if width <= thumbnail_size || height <= thumbnail_size {
+        return img;
     }
 
     let mut nwidth = width;
@@ -422,17 +422,17 @@ fn resize_image(img: &DynamicImage, size: usize, process_origin: bool) -> Option
         nheight = (thumbnail_size as f32 / width as f32 * height as f32) as u32;
     }
 
-    // 存储原图的话，先压缩原图
+    // 存储原图的话，先压缩原图，再生成缩略图，基本能保证最终的缩略图大小范围在 20k 内
     if process_origin {
-        if let Ok(img) = compress_img(img, THUMB_QUALITY) {
+        if let Ok(img) = compress_img(&img, THUMB_QUALITY) {
             if let Ok(img) = image::load_from_memory(&img) {
-                return Some(img.resize(nwidth, nheight, image::imageops::FilterType::Nearest))
+                return Box::new(img.resize(nwidth, nheight, image::imageops::FilterType::Nearest));
             }
         }
     }
 
     // 将原始尺寸的图片缩小到指定尺寸
-    Some(img.resize(nwidth, nheight, image::imageops::FilterType::Nearest))
+    return Box::new(img.resize(nwidth, nheight, image::imageops::FilterType::Nearest));
 }
 
 // 根据 img 压缩成 webp 格式
