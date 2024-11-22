@@ -34,11 +34,14 @@
 
     <div class="upload-box">
         <div class="upload-button">
-            <div>
+            <div class="quality">
                 <p>1.点击选择图片或拖动图片到此处</p>
+                <p>2.选择图片质量，100%为原图上传</p>
                 <p>2.点击上传按钮</p>
-                <p>3.等待上传成功...压缩上传会耗时较长</p>
+                <p>3.等待上传成功...</p>
                 <p>4.点击图片名称获取最终的图片链接</p>
+                <p>PS：质量小于100为压缩上传，耗时会增加</p>
+                <p>PS：压缩上传后的图片统一为 webp 格式</p>
             </div>
             <input type="file" id="upload" multiple accept=".jpg, .png, .jpeg, .svg">
         </div>
@@ -46,7 +49,9 @@
 
     <div>
         <button id="upload-btn">上传</button>
-        <button id="compress-upload-btn">压缩上传</button>
+        <input type="range" min="10" max="100" step="1" value="40" id="quality-range" />
+        <span class="quality">质量：<span id="quality">40</span>%</span>
+        <!-- <button id="compress-upload-btn">压缩上传</button> -->
     </div>
 
     <div class="preview-box">
@@ -57,7 +62,7 @@
 
 <script>
     // 选择上传文件
-    document.getElementById("upload").addEventListener('change', (evt) => {
+    document.getElementById("upload")?.addEventListener('change', (evt) => {
         console.log(evt);
         var filesList = document.querySelector('#upload').files;
         if (filesList.length == 0) { //如果取消上传，则上传文件的长度为0
@@ -109,13 +114,21 @@
     });
 
     // 点击上传
-    document.getElementById("upload-btn").addEventListener('click', () => {
-        const url = "/api/upload"
+    document.getElementById("upload-btn")?.addEventListener('click', () => {
         const imgs = document.getElementsByClassName("preview-box")[0].getElementsByTagName("img");
         if (!imgs || imgs.length == 0) {
             toast("info", "先选择图片")
             return
         }
+
+        let quality = document.getElementById("quality").innerHTML;
+        quality =  Number(quality); // 验证质量是否为数字
+        if (isNaN(quality)) {
+            toast("warn", "质量不是数字，默认使用40进行上传")
+            quality = 40; // 默认为40
+        }
+        const url = "/api/upload";
+
         for (const img of imgs) {
             const success = img.getAttribute("success");
             if (success) {
@@ -144,17 +157,20 @@
             loading.appendChild(loading_text);
             parentNode.appendChild(loading)
 
-            // const loading = document.createElement("div");
-            // loading.classList.add("loading");
-            // loading.style.width = 100;
-            // loading.style.height = 100;
-            // loading.style.background = "red";
-
-            // img.appendChild(loading)
+            const formData = {
+                name: file_name,
+                size: file_size,
+                type: file_type,
+                quality: quality,
+                data: file_data, // base64 放最后
+            }
+            // change formData to query string
+            const queryString = Object.keys(formData).map(key => `${key}=${formData[key]}`).join('&');
+            // console.log(formData, queryString);
 
             fetch(url, {
                 method: "post",
-                body: `name=${file_name}&size=${file_size}&type=${file_type}&data=${file_data}`,
+                body: queryString,
             })
                 .then(response => response.json())
                 .then(json => {
@@ -188,89 +204,98 @@
 
     })
 
-    // 点击压缩上传
-    document.getElementById("compress-upload-btn").addEventListener('click', () => {
-        const url = "/api/compressUpload"
-        const imgs = document.getElementsByClassName("preview-box")[0].getElementsByTagName("img");
-        if (!imgs || imgs.length == 0) {
-            toast("info", "先选择图片")
-            return
-        }
-        for (const img of imgs) {
-            const success = img.getAttribute("success");
-            if (success) {
-                continue;
-            }
-            const parentNode = img.parentNode;
-            // 避免重试的时候，还有旧的loading
-            const loadings = parentNode.getElementsByClassName("loading");
-            if (loadings) {
-                console.log(loadings);
-                for (const loadingTmp of loadings) {
-                    parentNode.removeChild(loadingTmp);
-                }
-            }
+    // // 点击压缩上传
+    // document.getElementById("compress-upload-btn")?.addEventListener('click', () => {
+    //     const url = "/api/compressUpload"
+    //     const imgs = document.getElementsByClassName("preview-box")[0].getElementsByTagName("img");
+    //     if (!imgs || imgs.length == 0) {
+    //         toast("info", "先选择图片")
+    //         return
+    //     }
+    //     for (const img of imgs) {
+    //         const success = img.getAttribute("success");
+    //         if (success) {
+    //             continue;
+    //         }
+    //         const parentNode = img.parentNode;
+    //         // 避免重试的时候，还有旧的loading
+    //         const loadings = parentNode.getElementsByClassName("loading");
+    //         if (loadings) {
+    //             console.log(loadings);
+    //             for (const loadingTmp of loadings) {
+    //                 parentNode.removeChild(loadingTmp);
+    //             }
+    //         }
 
 
-            const file_type = img.getAttribute("f-type");
-            const file_name = img.getAttribute("f-name");
-            const file_size = img.getAttribute("f-size");
-            const file_data = img.getAttribute("src");
+    //         const file_type = img.getAttribute("f-type");
+    //         const file_name = img.getAttribute("f-name");
+    //         const file_size = img.getAttribute("f-size");
+    //         const file_data = img.getAttribute("src");
 
-            const loading = document.createElement("div");
-            loading.classList.add("loading");
-            const loading_text = document.createElement("div");
-            loading_text.classList.add("loading-text")
-            loading.appendChild(loading_text);
-            parentNode.appendChild(loading)
+    //         const loading = document.createElement("div");
+    //         loading.classList.add("loading");
+    //         const loading_text = document.createElement("div");
+    //         loading_text.classList.add("loading-text")
+    //         loading.appendChild(loading_text);
+    //         parentNode.appendChild(loading)
 
-            // const loading = document.createElement("div");
-            // loading.classList.add("loading");
-            // loading.style.width = 100;
-            // loading.style.height = 100;
-            // loading.style.background = "red";
+    //         // const loading = document.createElement("div");
+    //         // loading.classList.add("loading");
+    //         // loading.style.width = 100;
+    //         // loading.style.height = 100;
+    //         // loading.style.background = "red";
 
-            // img.appendChild(loading)
+    //         // img.appendChild(loading)
 
-            fetch(url, {
-                method: "post",
-                body: `name=${file_name}&size=${file_size}&type=${file_type}&data=${file_data}`,
-            })
-                .then(response => response.json())
-                .then(json => {
-                    console.log(json);
-                    img.setAttribute("success", json.success);
-                    parentNode.removeChild(loading)
+    //         fetch(url, {
+    //             method: "post",
+    //             body: `name=${file_name}&size=${file_size}&type=${file_type}&data=${file_data}`,
+    //         })
+    //             .then(response => response.json())
+    //             .then(json => {
+    //                 console.log(json);
+    //                 img.setAttribute("success", json.success);
+    //                 parentNode.removeChild(loading)
 
-                    if (json.success) {
-                        toast("success", json.msg);
+    //                 if (json.success) {
+    //                     toast("success", json.msg);
 
-                        const img_name = parentNode.getElementsByClassName("file-name")[0];
-                        img_name.classList.add("success");
-                        img_name.setAttribute("title", "复制链接")
+    //                     const img_name = parentNode.getElementsByClassName("file-name")[0];
+    //                     img_name.classList.add("success");
+    //                     img_name.setAttribute("title", "复制链接")
 
-                        const url = json.data.url;
-                        const thumb = json.data.thumb;
-                        if (thumb && url) {
-                            img_name.addEventListener('click', () => copyUrl(url));
-                            img.src = thumb; // 替换为服务器地址
-                        }
-                    } else {
-                        toast("error", json.msg);
-                        const result = document.createElement("span");
-                        result.classList.add("error");
-                        result.innerHTML = json.msg;
-                        parentNode.appendChild(result);
-                    }
-                })
-                .catch(err => console.log('Request Failed', err));
-        }
+    //                     const url = json.data.url;
+    //                     const thumb = json.data.thumb;
+    //                     if (thumb && url) {
+    //                         img_name.addEventListener('click', () => copyUrl(url));
+    //                         img.src = thumb; // 替换为服务器地址
+    //                     }
+    //                 } else {
+    //                     toast("error", json.msg);
+    //                     const result = document.createElement("span");
+    //                     result.classList.add("error");
+    //                     result.innerHTML = json.msg;
+    //                     parentNode.appendChild(result);
+    //                 }
+    //             })
+    //             .catch(err => console.log('Request Failed', err));
+    //     }
 
-    })
+    // })
 
     window.addEventListener('load', () => {
         initThemeBtn();
+
+        const quality = document.getElementById("quality");
+        document.getElementById("quality-range")?.addEventListener('input', (evt) => {
+            const value = evt.target.value;
+            // console.log(value);
+            quality.innerHTML = value;
+        })
     })
+
+
 </script>
 
 </html>

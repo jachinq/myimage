@@ -448,3 +448,8 @@ dialog::backdrop {
     right: 0;
     /* margin: 1rem; */
 }
+
+.quality {
+    font-size: 0.8rem;
+    /* color: #999; */
+}
