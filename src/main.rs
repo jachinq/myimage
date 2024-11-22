@@ -13,10 +13,13 @@ use std::{
 use tiny_http::{Header, Request, Response, Server};
 use urlencoding::decode;
 
+const PORT: i32 = 10016;
+const THUMB_QUALITY: i8 = 10;
+
 fn main() {
     sqlite::init_tables();
 
-    match Server::http("0.0.0.0:10016") {
+    match Server::http(format!("0.0.0.0::{}", PORT)) {
         Err(_) => println!("start server error;check port is alread used?"),
         Ok(server) => {
             let html_dir = "./web/"; // 指定你的静态文件目录
@@ -269,7 +272,10 @@ fn upload(params: HashMap<String, String>) -> String {
     } else {
         "webp".to_string()
     };
-    println!("匹配到了 /upload, qulity={} file_type={} use_origin={}", quality, file_type, origin_upload);
+    println!(
+        "匹配到了 /upload, qulity={} file_type={} use_origin={}",
+        quality, file_type, origin_upload
+    );
 
     let name = match params.get("name") {
         Some(name) => name.to_string(),
@@ -362,8 +368,8 @@ fn upload(params: HashMap<String, String>) -> String {
 
     let (width, height) = img.dimensions();
     let mut proc_thumb_faile = false;
-    if let Some(img) = resize_image(&img, real_size) {
-        match compress_img(&img, quality) {
+    if let Some(img) = resize_image(&img, real_size, origin_upload) {
+        match compress_img(&img, THUMB_QUALITY) {
             Err(result) => {
                 println!("compress img err={}", result);
                 proc_thumb_faile = true;
@@ -396,7 +402,7 @@ fn upload(params: HashMap<String, String>) -> String {
 }
 
 // 缩小图片
-fn resize_image(img: &DynamicImage, size: usize) -> Option<DynamicImage> {
+fn resize_image(img: &DynamicImage, size: usize, process_origin: bool) -> Option<DynamicImage> {
     let thumbnail_size = 300;
     let (width, height) = img.dimensions();
 
@@ -415,6 +421,16 @@ fn resize_image(img: &DynamicImage, size: usize) -> Option<DynamicImage> {
     if height > width {
         nheight = (thumbnail_size as f32 / width as f32 * height as f32) as u32;
     }
+
+    // 存储原图的话，先压缩原图
+    if process_origin {
+        if let Ok(img) = compress_img(img, THUMB_QUALITY) {
+            if let Ok(img) = image::load_from_memory(&img) {
+                return Some(img.resize(nwidth, nheight, image::imageops::FilterType::Nearest))
+            }
+        }
+    }
+
     // 将原始尺寸的图片缩小到指定尺寸
     Some(img.resize(nwidth, nheight, image::imageops::FilterType::Nearest))
 }
