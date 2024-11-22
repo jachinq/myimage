@@ -1,0 +1,450 @@
+:root {
+    --bg: white;
+    --text: #1e1e1e;
+    --primary: rgb(108 173 151);
+    --primary-hover: rgb(127, 202, 177);
+    --shadow: rgba(0, 0, 0, 0.1);
+}
+
+body,
+html {
+    padding: 0;
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    transition: all ease-in-out 0.5s;
+}
+
+a {
+    color: var(--primary);
+    cursor: pointer;
+}
+
+a:hover {
+    color: var(--primary-hover);
+}
+
+.del {
+    color: #F56C6C;
+}
+
+.del:hover {
+    color: #f78989;
+}
+
+button {
+    padding: 5px 10px;
+    margin: 5px 20px;
+    background: var(--primary);
+    border-radius: 4px;
+    color: white;
+    border: none;
+    user-select: none;
+    transition: all ease-in-out 0.2s;
+}
+
+button:hover {
+    background: var(--primary-hover);
+    color: rgb(91, 99, 96);
+    cursor: pointer;
+}
+
+
+.header {
+    padding: 5px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0px 5px 5px var(--shadow);
+}
+
+.header a {
+    margin-right: 10px;
+}
+
+.upload-button {
+    position: relative;
+    display: flex;
+    padding: 5px 20px;
+    background: var(--primary);
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    margin: 5px 20px;
+    width: 100hv;
+    height: 300px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    transition: all ease-in-out 0.2s;
+}
+
+.upload-button:hover {
+    background: var(--primary-hover);
+    /* color: rgb(91, 99, 96); */
+    cursor: pointer;
+}
+
+.show-img {
+    --size: 250px;
+    max-height: var(--size);
+    max-width: var(--size);
+    min-height: var(--size);
+    min-width: var(--size);
+    margin: 2px;
+    border: #7d9c90 1px solid;
+    object-fit: cover;
+    transition: all ease-in-out 0.2s;
+    border-radius: 4px;
+}
+
+.show-img:hover {
+    transform: translateY(-2px);
+    cursor: pointer;
+    border-color: var(--primary-hover);
+}
+
+input[type=file] {
+    /* border: none;
+    color: red;
+    height: 200px;
+    display: none; */
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    font-size: 100px;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    filter: alpha(opacity=0);
+    cursor: pointer
+}
+
+.del-btn {
+    background-color: #F56C6C;
+}
+
+.del-btn:hover {
+    color: white;
+    background-color: #f78989;
+}
+
+dialog button {
+    margin: 0;
+}
+
+/* toast 样式 */
+.toast {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+}
+
+.toast-box .info {
+    background: #909399;
+    color: #e9e9eb;
+}
+
+.toast-box .success {
+    background: #67C23A;
+    color: #e1f3d8;
+}
+
+.toast-box .warn {
+    background: #E6A23C;
+    color: #faecd8;
+}
+
+.toast-box .error {
+    background: #F56C6C;
+    color: #fde2e2;
+}
+
+.theme {
+    position: fixed;
+    top: 0;
+    right: 0;
+}
+
+.theme div {
+    line-height: 36px;
+    margin: 0px 24px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.theme a:hover {
+    text-decoration: underline;
+}
+
+/*滚动条样式*/
+::-webkit-scrollbar {
+    display: none;
+    /*隐藏滚动条*/
+    width: 6px;
+    height: 6px;
+    /*background-color: #f1f1f1;*/
+    border-radius: 16px;
+    background-color: var(--bg-white-mask);
+}
+
+/*滑块样式*/
+::-webkit-scrollbar-thumb {
+    /*background-color: #b2b2b2;*/
+    background-color: rgba(1, 1, 1, 0.15);
+    width: 16px;
+    -webkit-border-radius: 16px;
+    -moz-border-radius: 16px;
+    border-radius: 16px;
+}
+
+
+/* index */
+@keyframes roate {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 100px;
+    /* background-color: rgba(0, 0, 0, 0.2); */
+    /* border-radius: 50%; */
+    /* display: flex; */
+    /* justify-content: center; */
+    /* align-items: center; */
+}
+
+.loading-text {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 10px dotted var(--primary);
+    /* font-size: 50px; */
+    animation: roate ease-in-out 3s infinite;
+}
+
+.preview-box {
+    display: flex;
+    gap: 10px;
+    padding: 5px 20px;
+    flex-wrap: wrap;
+}
+
+.preview-img {
+    --size: 250px;
+    max-height: var(--size);
+    max-width: var(--size);
+    min-height: var(--size);
+    min-width: var(--size);
+    object-fit: cover;
+}
+
+.preview {
+    position: relative;
+    border: 1px solid gray;
+    border-radius: 4px;
+}
+
+.preview .file-name {
+    font-size: 12px;
+    color: #ffffff;
+    max-width: 250px;
+    text-wrap: wrap;
+    text-align: center;
+    background: #535353;
+}
+
+.preview .success {
+    color: #67C23A;
+    cursor: pointer;
+}
+
+.preview .error {
+    color: #F56C6C;
+}
+
+.preview .delete-btn {
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    line-height: 32px;
+    display: none;
+    border-radius: 50%;
+    background: #2e2e2e70;
+    cursor: pointer;
+    color: white;
+}
+
+.preview .delete-btn span {
+    position: absolute;
+    left: 11px;
+    top: -2px;
+}
+
+.preview .delete-btn:hover {
+    background-color: #3d3d3d;
+}
+
+.preview:hover .delete-btn {
+    display: block;
+}
+
+
+
+/* list */
+.control {
+    position: fixed !important;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.control button {
+    padding: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    margin-bottom: 1rem;
+}
+
+.control a {
+    border-radius: 4px;
+    padding: 3px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* background-color: rgba(0, 0, 0, 0.3); */
+}
+.control a:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.control .tips {
+    width: 80px;
+    display: none;
+    position: absolute;
+    top: -2rem;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 5px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 16px;
+}
+
+/* dialog 默认的选中样式，很丑，干掉*/
+dialog:-internal-dialog-in-top-layer {
+    user-select: none;
+    visibility: inherit;
+}
+
+dialog button:focus-visible {
+    outline: none;
+}
+
+dialog button:hover .tips,
+dialog a:hover .tips {
+    display: block;
+}
+
+.thumb-img {
+    --size: 250px;
+    max-height: var(--size);
+    max-width: var(--size);
+    min-height: var(--size);
+    min-width: var(--size);
+    margin: 2px;
+    border: #7d9c90 1px solid;
+    object-fit: cover;
+    border-radius: 4px;
+    display: block;
+}
+
+dialog {
+    padding: 0;
+    border: none;
+    /* border-radius: 4px; */
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    /* transition: all 0.2s ease-in-out; */
+    /* max-width: 100%; */
+    border-radius: 8px;
+    /* max-width: 80%; */
+}
+
+dialog img {
+    /* max-width: 100%; */
+    /* max-height: 100%; */
+    display: block;
+    transition: all 0.4s ease-in-out;
+}
+
+dialog .content {
+    overflow: scroll;
+    object-fit: cover;
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.page-box {
+    display: inline-block;
+}
+
+.page-box span {
+    font-size: 18px;
+}
+
+.page-box button {
+    margin: 0;
+    padding: 2px 5px;
+    font-size: 16px;
+}
+
+.list-box {
+    display: flex;
+    flex-wrap: wrap;
+    /* flex-direction: column; */
+}
+
+.thumb-box:hover {
+    transform: translateY(-2px);
+    cursor: pointer;
+    border-color: #bde6d6;
+}
+
+.thumb-box {
+    position: relative;
+    transition: all ease-in-out 0.2s;
+
+}
+
+.select-checkbox {
+    --size: 32px;
+    width: var(--size);
+    height: var(--size);
+    position: absolute;
+    top: 0;
+    right: 0;
+    /* margin: 1rem; */
+}

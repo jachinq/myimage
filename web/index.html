@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="description" content="提供上传图片服务及图片文件服务" /> <!-- 页面描述 -->
+    <meta name="keywords" content="图床" /> <!-- 页面关键词 -->
+    <meta name="author" content="jachin, jachinq@163.com" /> <!-- 网页作者 -->
+    <!--<meta name="robots" content="index" /> 搜索引擎抓取 -->
+
+    <!-- 为移动设备添加 viewport -->
+    <!-- `width=device-width` 会导致 iPhone 5 添加到主屏后以 WebApp 全屏模式打开页面时出现黑边 http://bigc.at/ios-webapp-viewport-meta.orz -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3, minimum-scale=1">
+
+    <!-- iOS 设备 begin -->
+    <meta name="apple-mobile-web-app-title" content="EasyImage | 简单图床"> <!-- 添加到主屏后的标题（iOS 6 新增） -->
+    <meta name="apple-mobile-web-app-capable" content="yes" /> <!-- 是否启用 WebApp 全屏模式 -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- 设置状态栏的背景颜色，只有在 `"apple-mobile-web-app-capable" content="yes"` 时生效 -->
+    <meta name="format-detection" content="telephone=no" /> <!-- 禁止数字识自动别为电话号码 -->
+    <meta name="apple-itunes-app" content="app-id=myAppStoreID, affiliate-data=myAffiliateData, app-argument=myURL">
+    <!-- 添加智能 App 广告条 Smart App Banner（iOS 6+ Safari） -->
+
+    <title>EasyImage | 简单图床</title>
+    <link rel="stylesheet" href="./assets/comm.css">
+</head>
+
+<body>
+    <div class="header">
+        <a href="/">首页</a>
+        <a href="/list.html">列表</a>
+    </div>
+
+    <div class="upload-box">
+        <div class="upload-button">
+            <div>
+                <p>1.点击选择图片或拖动图片到此处</p>
+                <p>2.点击上传按钮</p>
+                <p>3.等待上传成功...压缩上传会耗时较长</p>
+                <p>4.点击图片名称获取最终的图片链接</p>
+            </div>
+            <input type="file" id="upload" multiple accept=".jpg, .png, .jpeg, .svg">
+        </div>
+    </div>
+
+    <div>
+        <button id="upload-btn">上传</button>
+        <button id="compress-upload-btn">压缩上传</button>
+    </div>
+
+    <div class="preview-box">
+    </div>
+</body>
+<script src="./assets/toast.js"></script>
+<script src="./assets/comm.js"></script>
+
+<script>
+    // 选择上传文件
+    document.getElementById("upload").addEventListener('change', (evt) => {
+        console.log(evt);
+        var filesList = document.querySelector('#upload').files;
+        if (filesList.length == 0) { //如果取消上传，则上传文件的长度为0
+            toast('warn', "没有上传任何文件");
+            return;
+        }
+
+        // 有文件上传，处理为预览图
+        for (const file of filesList) {
+            const reader = new FileReader();
+            console.log(file);
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                const preview_box = document.getElementsByClassName("preview-box")[0];
+
+                const preview = document.createElement("div");
+                preview.classList.add("preview")
+
+                const img = document.createElement("img");
+                img.classList.add("preview-img");
+                img.setAttribute("src", reader.result);
+                img.setAttribute("f-name", file.name);
+                img.setAttribute("f-type", file.type);
+                img.setAttribute("f-size", file.size);
+                img.setAttribute("f-modify", file.lastModified);
+
+                const img_name = document.createElement("div");
+                img_name.innerHTML = file.name;
+                img_name.classList.add("file-name");
+
+                const del_btn = document.createElement("div");
+                del_btn.classList.add("delete-btn");
+                const x = document.createElement("span");
+                x.innerHTML = "x";
+                // const x = document.getElementById("close").cloneNode();
+                // x.style.display = "block"
+                del_btn.appendChild(x);
+                del_btn.addEventListener('click', () => {
+                    preview_box.removeChild(preview);
+                })
+
+                preview.appendChild(img);
+                preview.appendChild(img_name);
+                preview.appendChild(del_btn);
+                preview_box.appendChild(preview);
+            }
+        }
+
+    });
+
+    // 点击上传
+    document.getElementById("upload-btn").addEventListener('click', () => {
+        const url = "/api/upload"
+        const imgs = document.getElementsByClassName("preview-box")[0].getElementsByTagName("img");
+        if (!imgs || imgs.length == 0) {
+            toast("info", "先选择图片")
+            return
+        }
+        for (const img of imgs) {
+            const success = img.getAttribute("success");
+            if (success) {
+                continue;
+            }
+            const parentNode = img.parentNode;
+            // 避免重试的时候，还有旧的loading
+            const loadings = parentNode.getElementsByClassName("loading");
+            if (loadings) {
+                console.log(loadings);
+                for (const loadingTmp of loadings) {
+                    parentNode.removeChild(loadingTmp);
+                }
+            }
+
+
+            const file_type = img.getAttribute("f-type");
+            const file_name = img.getAttribute("f-name");
+            const file_size = img.getAttribute("f-size");
+            const file_data = img.getAttribute("src");
+
+            const loading = document.createElement("div");
+            loading.classList.add("loading");
+            const loading_text = document.createElement("div");
+            loading_text.classList.add("loading-text")
+            loading.appendChild(loading_text);
+            parentNode.appendChild(loading)
+
+            // const loading = document.createElement("div");
+            // loading.classList.add("loading");
+            // loading.style.width = 100;
+            // loading.style.height = 100;
+            // loading.style.background = "red";
+
+            // img.appendChild(loading)
+
+            fetch(url, {
+                method: "post",
+                body: `name=${file_name}&size=${file_size}&type=${file_type}&data=${file_data}`,
+            })
+                .then(response => response.json())
+                .then(json => {
+                    console.log(json);
+                    img.setAttribute("success", json.success);
+                    parentNode.removeChild(loading)
+
+                    if (json.success) {
+                        toast("success", json.msg);
+
+                        const img_name = parentNode.getElementsByClassName("file-name")[0];
+                        img_name.classList.add("success");
+                        img_name.setAttribute("title", "复制链接")
+
+                        const url = json.data.url;
+                        const thumb = json.data.thumb;
+                        if (thumb && url) {
+                            img_name.addEventListener('click', () => copyUrl(url));
+                            img.src = thumb; // 替换为服务器地址
+                        }
+                    } else {
+                        toast("error", json.msg);
+                        const result = document.createElement("span");
+                        result.classList.add("error");
+                        result.innerHTML = json.msg;
+                        parentNode.appendChild(result);
+                    }
+                })
+                .catch(err => console.log('Request Failed', err));
+        }
+
+    })
+
+    // 点击压缩上传
+    document.getElementById("compress-upload-btn").addEventListener('click', () => {
+        const url = "/api/compressUpload"
+        const imgs = document.getElementsByClassName("preview-box")[0].getElementsByTagName("img");
+        if (!imgs || imgs.length == 0) {
+            toast("info", "先选择图片")
+            return
+        }
+        for (const img of imgs) {
+            const success = img.getAttribute("success");
+            if (success) {
+                continue;
+            }
+            const parentNode = img.parentNode;
+            // 避免重试的时候，还有旧的loading
+            const loadings = parentNode.getElementsByClassName("loading");
+            if (loadings) {
+                console.log(loadings);
+                for (const loadingTmp of loadings) {
+                    parentNode.removeChild(loadingTmp);
+                }
+            }
+
+
+            const file_type = img.getAttribute("f-type");
+            const file_name = img.getAttribute("f-name");
+            const file_size = img.getAttribute("f-size");
+            const file_data = img.getAttribute("src");
+
+            const loading = document.createElement("div");
+            loading.classList.add("loading");
+            const loading_text = document.createElement("div");
+            loading_text.classList.add("loading-text")
+            loading.appendChild(loading_text);
+            parentNode.appendChild(loading)
+
+            // const loading = document.createElement("div");
+            // loading.classList.add("loading");
+            // loading.style.width = 100;
+            // loading.style.height = 100;
+            // loading.style.background = "red";
+
+            // img.appendChild(loading)
+
+            fetch(url, {
+                method: "post",
+                body: `name=${file_name}&size=${file_size}&type=${file_type}&data=${file_data}`,
+            })
+                .then(response => response.json())
+                .then(json => {
+                    console.log(json);
+                    img.setAttribute("success", json.success);
+                    parentNode.removeChild(loading)
+
+                    if (json.success) {
+                        toast("success", json.msg);
+
+                        const img_name = parentNode.getElementsByClassName("file-name")[0];
+                        img_name.classList.add("success");
+                        img_name.setAttribute("title", "复制链接")
+
+                        const url = json.data.url;
+                        const thumb = json.data.thumb;
+                        if (thumb && url) {
+                            img_name.addEventListener('click', () => copyUrl(url));
+                            img.src = thumb; // 替换为服务器地址
+                        }
+                    } else {
+                        toast("error", json.msg);
+                        const result = document.createElement("span");
+                        result.classList.add("error");
+                        result.innerHTML = json.msg;
+                        parentNode.appendChild(result);
+                    }
+                })
+                .catch(err => console.log('Request Failed', err));
+        }
+
+    })
+
+    window.addEventListener('load', () => {
+        initThemeBtn();
+    })
+</script>
+
+</html>
