@@ -1,0 +1,12 @@
+name: myimage
+services:
+  myimage:
+    image: myimage:latest
+    container_name: myimage
+    ports:
+      - 10016:8080  # you can change the port 10016 to any other port you want
+    volumes:
+      - ./res:/home/myapp/web/res
+      - ./data:/home/myapp/data
+      - /etc/localtime:/etc/localtime
+    restart: unless-stopped
