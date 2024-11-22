@@ -226,14 +226,13 @@ window.addEventListener('load', () => {
     })
 
     document.addEventListener('keydown', evt => {
-        const code = event.keyCode;
+        const code = evt.key;
         const open = dialog.getAttribute("open") != null;
         if (open) {
-            let change_pic = false;
-            if (code == 37) { // left
+            if (code === 'ArrowLeft') { // left
                 pre_pic();
             }
-            else if (code == 39) { // right
+            else if (code == 'ArrowRight') { // right
                 next_pic();
             }
 
@@ -329,6 +328,7 @@ function change_pic() {
 function pre_pic() {
     const pre_index = focus.index - 1;
     if (pre_index < 0) {
+        toast("warn", "已经是第一张了~");
         return;
     }
     focus = list_img[pre_index];
@@ -338,6 +338,7 @@ function pre_pic() {
 function next_pic() {
     const next_index = focus.index + 1;
     if (next_index >= list_img.length) {
+        toast("warn", "已经是最后一张了~");
         return;
     }
     focus = list_img[next_index];
