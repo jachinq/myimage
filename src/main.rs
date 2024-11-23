@@ -11,7 +11,7 @@ use std::{
 use tiny_http::{Header, Request, Response, Server};
 use urlencoding::decode;
 
-const PORT: i32 = 10016;
+const PORT: i32 = 8080;
 const THUMB_QUALITY: i8 = 10;
 
 fn main() {
@@ -20,7 +20,7 @@ fn main() {
     match Server::http(format!("0.0.0.0:{}", PORT)) {
         Err(_) => println!("start server error;check port is alread used?"),
         Ok(server) => {
-            let html_dir = "./web/"; // 指定你的静态文件目录
+            let html_dir: &str = "./web/"; // 指定你的静态文件目录
             for request in server.incoming_requests() {
                 // 使用线程避免慢请求导致服务器阻塞
                 thread::spawn(move || {

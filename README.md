@@ -59,10 +59,16 @@ cd app
 
 ## Deploy to Docker
 
+Prepare the Dockerfile and docker-compose.yml file.
+
+```
+cp Dockerfile docker-compose.yml app/
+```
+
 Run with docker, the project file strucure is:
 
 ```
-myimage/
+app/
 ├── Dockerfile
 ├── app
 │   ├── myimage
