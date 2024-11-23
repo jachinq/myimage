@@ -250,10 +250,11 @@ fn upload(params: HashMap<String, String>) -> String {
     let origin_upload = quality >= 100 || quality < 10;
 
     let file_type = if origin_upload {
-        match params.get("type") {
-            Some(file_type) => file_type.replace("image/", ""),
-            None => "png".to_string(),
-        }
+        utils::get_value(&params, "type", "png".to_string()).replace("image/", "")
+        // match params.get("type") {
+        //     Some(file_type) => file_type.replace("image/", ""),
+        //     None => "png".to_string(),
+        // }
     } else {
         "webp".to_string()
     };
@@ -269,17 +270,9 @@ fn upload(params: HashMap<String, String>) -> String {
 
     let size = utils::get_value(&params, "size", 0);
 
-    let error_result = ReqResult {
-        success: false,
-        msg: "上传失败".to_string(),
-        code: -1,
-        data: "".to_string(),
-    }
-    .json();
-
     let data = params.get("data");
     if data.is_none() {
-        return error_result;
+        return ReqResult::error("data 参数为空", data).json();
     }
 
     let data = params.get("data").expect("query data is none.");
@@ -306,7 +299,18 @@ fn upload(params: HashMap<String, String>) -> String {
     utils::log_time_used(start_time, "load img from query");
     if let Err(e) = load_img_result {
         println!("load img from query err {}", e);
-        return error_result;
+        let msg = match e {
+            image::ImageError::Unsupported(_) => &format!(
+                "不支持的图片类型: {}",
+                utils::get_value(&params, "type", "png".to_string()).replace("image/", "")
+            ),
+            image::ImageError::Decoding(_) => "解码错误，请检查图片格式是否正确",
+            image::ImageError::Encoding(_) => "编码错误，请检查图片格式是否正确",
+            image::ImageError::Parameter(_) => "参数错误，例如图像的维度不正确",
+            image::ImageError::Limits(_) => "图像大小超过限制",
+            image::ImageError::IoError(_) => "IO错误，请检查文件是否存在或权限是否正确",
+        };
+        return ReqResult::error(msg, data).json();
     }
     let img = load_img_result.expect("load img from query error.");
 
@@ -316,7 +320,7 @@ fn upload(params: HashMap<String, String>) -> String {
         let compress_result = utils::compress_img(&img, quality);
         if let Err(e) = compress_result {
             println!("compress img err={}", e);
-            return error_result;
+            return ReqResult::error("压缩图片失败", data).json();
         }
         let webp = compress_result.expect("compress img error.");
         utils::log_time_used(start_time, "compress");
@@ -331,7 +335,7 @@ fn upload(params: HashMap<String, String>) -> String {
 
     if let Err(err) = upload_result {
         println!("save err {}", err);
-        return error_result;
+        return ReqResult::error("保存图片失败", data).json();
     }
 
     let real_size = upload_result.expect("upload error.");
@@ -502,6 +506,15 @@ impl<T: Serialize> ReqResult<T> {
             success: false,
             code: -120,
             msg: "数据库连接失败".to_string(),
+            data,
+        }
+    }
+
+    pub fn error(msg: &str, data: T) -> Self {
+        ReqResult {
+            success: false,
+            code: -1,
+            msg: msg.to_string(),
             data,
         }
     }
