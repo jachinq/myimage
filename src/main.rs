@@ -13,6 +13,7 @@ use urlencoding::decode;
 
 const PORT: i32 = 8080;
 const THUMB_QUALITY: i8 = 10;
+const STATIC_DIR: &str = "./web"; // 指定你的静态文件目录
 
 fn main() {
     sqlite::init_tables();
@@ -20,7 +21,6 @@ fn main() {
     match Server::http(format!("0.0.0.0:{}", PORT)) {
         Err(_) => println!("start server error;check port is alread used?"),
         Ok(server) => {
-            let html_dir: &str = "./web/"; // 指定你的静态文件目录
             for request in server.incoming_requests() {
                 // 使用线程避免慢请求导致服务器阻塞
                 thread::spawn(move || {
@@ -29,11 +29,11 @@ fn main() {
                     // let mut is_resource = false;
                     let start_url = request.url().trim_start_matches('/');
                     let file_name = match start_url {
-                        "" | "index.html" => format!("{}index.html", html_dir),
+                        "" | "index.html" => format!("{}/index.html", STATIC_DIR),
                         // "list.html" => format!("{}list.html", html_dir),
                         somthing => {
                             if somthing.ends_with(".html") {
-                                format!("{}{}", html_dir, somthing)
+                                format!("{}/{}", STATIC_DIR, somthing)
                             } else {
                                 // content_type = "";
                                 is_api = somthing.contains("api/");
@@ -47,10 +47,7 @@ fn main() {
                                 if somthing.contains(".svg") {
                                     content_type = "image/svg+xml";
                                 }
-                                // if !is_api {
-                                // println!("other file={}", somthing);
-                                // }
-                                format!("{}{}", html_dir, somthing)
+                                format!("{}/{}", STATIC_DIR, somthing)
                             }
                         }
                     };
@@ -246,6 +243,8 @@ fn test() -> String {
 fn upload(params: HashMap<String, String>) -> String {
     // println!("{:?}", params);
     let quality = utils::get_value(&params, "quality", 40);
+    // 图片存放目录，默认为 ./web/res/
+    let appid = params.get("appid");
     // 先判断是否需要压缩图片
     let origin_upload = quality >= 100 || quality < 10;
 
@@ -280,18 +279,14 @@ fn upload(params: HashMap<String, String>) -> String {
     let mut buf = image_base64::from_base64(data.to_string());
     utils::log_time_used(start_time, "change base64");
 
-    let fmt = "%Y%m";
-    let year_month = chrono::Local::now().format(fmt).to_string();
-    let path = format!("{}/web/res/{}", utils::current_dir(), year_month);
-    let path_thumb = format!("{}/web/res/thumb/{}", utils::current_dir(), year_month);
-    utils::check_dir_and_create(&path);
-    utils::check_dir_and_create(&path_thumb);
-
     let uuid = &uuid::Uuid::new_v4().to_string()[0..8]; // 截取前8位作为文件名
-    let url = format!("./res/{}/{}.{}", year_month, uuid, file_type);
-    let mut url_thumb = format!("./res/{}/{}_thumb.{}", year_month, uuid, file_type);
-    let file_path = format!("./web/{}", url.replace("./", ""));
-    let file_path_thumbnail = format!("./web/{}", url_thumb.replace("./", ""));
+    let (file_path, url) = utils::get_file_path_and_url(false, appid, uuid, &file_type);
+    let (file_path_thumb, mut url_thumb) =
+        utils::get_file_path_and_url(true, appid, uuid, &file_type);
+    // println!("DEBUG: file_path={}", file_path);
+    // println!("DEBUG: file_path_thumb={}", file_path_thumb);
+    // println!("DEBUG: url={}", url);
+    // println!("DEBUG: url_thumb={}", url_thumb);
 
     // 从参数中加载图片
     let start_time = std::time::Instant::now();
@@ -356,7 +351,7 @@ fn upload(params: HashMap<String, String>) -> String {
             proc_thumb_faile = true;
         }
         Ok(data) => {
-            if let Err(e) = utils::save_img(&data, &file_path_thumbnail) {
+            if let Err(e) = utils::save_img(&data, &file_path_thumb) {
                 println!("save thumbnail err={}", e);
                 proc_thumb_faile = true;
             }
@@ -380,94 +375,38 @@ fn upload(params: HashMap<String, String>) -> String {
 }
 
 fn delete(params: HashMap<String, String>) -> String {
-    println!("{params:?}");
-    if let Some(thumb_url) = params.get("url") {
-        let mut url = thumb_url.replace("./res", "./web/res");
-        if url.contains("_thumb") {
-            let _ = remove_file(Path::new(&url)); // 先删掉缩略图
-            url = url.replace("_thumb", "");
-        }
-
-        let save_path = Path::new(&url);
-        match remove_file(save_path) {
-            Ok(_) => Data::del(thumb_url.to_string()).json(),
-            Err(e) => ReqResult {
-                success: false,
-                code: -1,
-                msg: e.to_string(),
-                data: url.to_string(),
-            }
-            .json(),
-        }
-    } else {
-        ReqResult {
-            success: false,
-            code: -2,
-            msg: "请指定正确的url".to_string(),
-            data: "".to_string(),
-        }
-        .json()
-    }
+    let url = utils::get_value(&params, "url", String::new());
+    Data::delete_single(&url).json()
 }
 
 fn delete_all(params: HashMap<String, String>) -> String {
-    println!("{params:?}");
-    if let Some(thumb_url) = params.get("url") {
-        let thumb_url = thumb_url.replace("[", "");
-        let thumb_url = thumb_url.replace("]", "");
-        let thumb_url = thumb_url.replace("\"", "");
-        let thumb_url_split = thumb_url.split(",");
-        let mut results = vec![];
-        let mut success = true;
-        for thumb_url in thumb_url_split {
-            let mut url = thumb_url.replace("./res", "./web/res");
-            if url.contains("_thumb") {
-                let _ = remove_file(Path::new(&url)); // 先删掉缩略图
-                url = url.replace("_thumb", "");
-            }
+    let urls = utils::get_value(&params, "url", String::new());
+    if urls.trim().is_empty() {
+        return ReqResult::error("请指定正确的url", urls).json();
+    }
 
-            let save_path = Path::new(&url);
-            let result = match remove_file(save_path) {
-                Ok(_) => Data::del(thumb_url.to_string()).json(),
-                Err(e) => {
-                    success = false;
-                    ReqResult {
-                        success: false,
-                        code: -1,
-                        msg: e.to_string(),
-                        data: url.to_string(),
-                    }
-                    .json()
-                }
-            };
-            results.push(result);
-        }
+    let urls = urls.replace("[", "");
+    let urls = urls.replace("]", "");
+    let urls = urls.replace("\"", "");
+    let url_split = urls.split(",");
 
-        if success {
-            ReqResult {
-                success,
-                code: 0,
-                msg: "删除成功".to_string(),
-                data: results,
-            }
-            .json()
-        } else {
-            ReqResult {
-                success: false,
-                code: -1,
-                msg: "删除失败，可刷新页面重试".to_string(),
-                data: results,
-            }
-            .json()
+    let mut success = true;
+    let mut results_ok = vec![];
+    let mut results_err = vec![];
+    for url in url_split {
+        let result = Data::delete_single(url);
+        if !result.is_success() {
+            success = false;
+            results_err.push(result);
+            continue;
         }
+        results_ok.push(result);
+    }
+
+    if success {
+        ReqResult::success("删除成功", results_ok).json()
     } else {
-        ReqResult {
-            success: false,
-            code: -2,
-            msg: "请指定正确的url".to_string(),
-            data: "".to_string(),
-        }
-        .json()
+        ReqResult::error("删除失败", results_err).json()
     }
 }
 
@@ -493,6 +432,10 @@ struct ReqResult<T> {
 }
 
 impl<T: Serialize> ReqResult<T> {
+    pub fn is_success(&self) -> bool {
+        self.success
+    }
+
     pub fn json(&mut self) -> String {
         if let Ok(json) = serde_json::to_string(self) {
             json
@@ -506,6 +449,15 @@ impl<T: Serialize> ReqResult<T> {
             success: false,
             code: -120,
             msg: "数据库连接失败".to_string(),
+            data,
+        }
+    }
+
+    pub fn success(msg: &str, data: T) -> Self {
+        ReqResult {
+            success: true,
+            code: 0,
+            msg: msg.to_string(),
             data,
         }
     }
@@ -583,6 +535,48 @@ impl Data {
             Ok(conn) => add(conn, data),
             Err(_) => ReqResult::conn_error(data),
         }
+    }
+
+    pub fn get_by_url(url: &str, is_thumb: bool) -> Option<Self> {
+        let mut sql = "SELECT * FROM picture where url = ?1".to_string();
+        if is_thumb {
+            sql = "SELECT * FROM picture where thumb = ?1".to_string();
+        }
+
+        let conn = sqlite::connect();
+        if conn.is_err() {
+            return None;
+        }
+
+        let conn = conn.unwrap();
+
+        let mut stmt = conn.prepare(&sql).unwrap();
+        let iter = stmt.query_map(params![url], |row| {
+            let data = Self {
+                name: row.get(0)?,
+                url: row.get(1)?,
+                thumb: row.get(2)?,
+                time: row.get(3)?,
+                size: row.get(4)?,
+                width: row.get(5)?,
+                height: row.get(6)?,
+            };
+            // println!("data={}", data.json());
+            Ok(data)
+        });
+        if iter.is_err() {
+            return None;
+        }
+        let iter = iter.unwrap();
+
+        let mut single = None;
+        for some in iter {
+            if some.is_ok() {
+                single = Some(some.unwrap());
+                break;
+            }
+        }
+        single
     }
 
     pub fn get_all(beg: isize, end: isize, start: isize, limit: isize) -> ReqResult<PageData> {
@@ -678,11 +672,17 @@ impl Data {
         }
     }
 
-    pub fn del(url: String) -> ReqResult<String> {
+    pub fn del(url: String, is_thumb: bool) -> ReqResult<String> {
         let del = |conn: Connection, thumb_url: String| {
-            let (success, msg, code, rows) = sqlite::fmt_result(
-                conn.execute("DELETE FROM picture WHERE thumb = ?1", params![thumb_url]),
-            );
+            let (success, msg, code, rows) = if is_thumb {
+                sqlite::fmt_result(
+                    conn.execute("DELETE FROM picture WHERE thumb = ?1", params![thumb_url]),
+                )
+            } else {
+                sqlite::fmt_result(
+                    conn.execute("DELETE FROM picture WHERE url = ?1", params![thumb_url]),
+                )
+            };
             println!(
                 "del picture end; rows={:?} thumb={:?} success={} msg={}",
                 rows, thumb_url, rows, msg
@@ -703,6 +703,34 @@ impl Data {
             Ok(conn) => del(conn, url),
             Err(_) => ReqResult::conn_error(url),
         }
+    }
+
+    pub fn delete_single(url_arg: &str) -> ReqResult<String> {
+        if url_arg.is_empty() {
+            return ReqResult::error("url不能为空", String::new());
+        }
+        let is_thumn = url_arg.contains("thumb");
+        let data = Data::get_by_url(url_arg, is_thumn);
+        if data.is_none() {
+            return ReqResult::error("找不到需要删除的图片", String::new());
+        }
+
+        let data = data.unwrap();
+        let url = data.url.replace("./res", "./web/res");
+        let thumb = data.thumb.replace("./res", "./web/res");
+
+        let ok = remove_file(Path::new(&thumb)); // 先删掉缩略图
+        if ok.is_err() {
+            println!("delete thumb err={}", ok.unwrap_err());
+            return ReqResult::error("删除缩略图失败", thumb);
+        }
+
+        let ok = remove_file(Path::new(&url));
+        if ok.is_err() {
+            println!("delete img err={}", ok.unwrap_err());
+            return ReqResult::error("删除图片失败",  url);
+        }
+        Data::del(url_arg.to_string(), is_thumn)
     }
 }
 
@@ -773,8 +801,9 @@ mod sqlite {
     }
 }
 
+#[allow(dead_code)]
 mod utils {
-    use super::THUMB_QUALITY;
+    use super::{STATIC_DIR, THUMB_QUALITY};
     use image::{DynamicImage, GenericImageView};
     use std::collections::HashMap;
     use std::io::Write;
@@ -799,6 +828,47 @@ mod utils {
             Ok(path) => path.display().to_string().replace("\\", "/"),
             Err(_) => ".".to_string(),
         }
+    }
+
+    /// 获取存放路径和 url
+    /// 普通文件：STATIC_DIR/res[/appid]/year_month
+    /// 缩略图：STATIC_DIR/res[/appid]/thumb/year_month
+    /// 普通文件url：./res[/appid]/year_month/uuid8bit.ext
+    /// 缩略图url：./res[/appid]/thumb/year_month/uuid8bit.ext
+    pub fn get_file_path_and_url(
+        is_thumb: bool,
+        appid: Option<&String>,
+        uuid: &str,
+        ext: &str,
+    ) -> (String, String) {
+        let mut path = String::new();
+        path.push_str("/res");
+        if let Some(appid) = appid {
+            path.push_str("/");
+            path.push_str(appid);
+        }
+        if is_thumb {
+            path.push_str("/thumb");
+        }
+        let fmt = "%Y%m";
+        let year_month = chrono::Local::now().format(fmt).to_string();
+        path.push_str("/");
+        path.push_str(&year_month);
+
+        // 此时 path 应该是 /res[/appid][/thumb]/year_month
+        // 对应的就是文件夹，检查一下是否已存在并自动创建
+        check_dir_and_create(&format!("{}{}", STATIC_DIR, path));
+
+        path.push_str("/");
+        path.push_str(uuid);
+        // if is_thumb {
+        //     path.push_str("_thumb");
+        // }
+        path.push_str(".");
+        path.push_str(ext);
+        let url = format!(".{}", path);
+        let file_path = format!("{}{}", STATIC_DIR, path);
+        (file_path, url)
     }
 
     // 从 map 中获取指定 key 的值，并转换为指定类型，如果转换失败则返回默认值
