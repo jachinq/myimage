@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path, str::FromStr};
 
 // const STATIC_DIR: &str = "./web"; // 指定你的静态文件目录
-use crate::STATIC_DIR;
+use crate::{ReqResult, STATIC_DIR};
 
 /// 检查路径是否存在，不存在则创建路径
 pub fn check_dir_and_create(path: &str) {
@@ -75,5 +75,66 @@ pub fn get_value<T: ToString + FromStr>(
         size
     } else {
         default_value
+    }
+}
+
+use serde::Serialize;
+use serde_json::Value;
+fn extract_known_fields(
+    json_string: &str,
+    _map: &HashMap<String, Value>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let parsed_json: Value = serde_json::from_str(json_string)?;
+
+    // 假设我们知道有一些特定的键要查找
+    // let known_keys = ["name", "age", "address"];
+
+    // 检查是否是一个JSON对象
+    if let Some(json_obj) = parsed_json.as_object() {
+        for known_key in json_obj.keys() {
+            // 尝试从JSON对象中获取已知键的值
+            if let Some(value) = json_obj.get(known_key) {
+                println!("{}: {:?}", known_key, value);
+
+                // 这里可以进一步处理值，例如将其转换为特定的类型
+                match value {
+                    Value::String(s) => println!("{} is a string: {}", known_key, s),
+                    Value::Number(n) => println!("{} is a number: {}", known_key, n),
+                    Value::Bool(b) => println!("{} is a boolean: {}", known_key, b),
+                    // 其他可能的值类型...
+                    _ => println!("{} has a different type", known_key),
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+impl<T: Serialize> ReqResult<T> {
+    pub fn json(&mut self) -> String {
+        if let Ok(json) = serde_json::to_string(self) {
+            json
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn success(msg: &str, data: T) -> Self {
+        ReqResult {
+            success: true,
+            code: 0,
+            msg: msg.to_string(),
+            data,
+        }
+    }
+
+    pub fn error(msg: &str, data: T) -> Self {
+        ReqResult {
+            success: false,
+            code: -1,
+            msg: msg.to_string(),
+            data,
+        }
     }
 }
