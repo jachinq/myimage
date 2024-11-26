@@ -15,6 +15,10 @@ fn test_parse_body() {
     map.insert("d".to_string(), "".to_string());
     map.insert("e".to_string(), "5".to_string());
     assert_eq!(data, map);
+
+    let body = "";
+    let data = parse_body(body);    
+    assert_eq!(data, HashMap::new());
 }
 
 fn test_parse_url() {
@@ -23,4 +27,8 @@ fn test_parse_url() {
     assert_eq!(path, "/index.html");
     assert_eq!(query, "a=1&b=2&c=3&d=&e=5&=");
 
+    let url = "http://www.example.com/api/getAll";
+    let (path, query) = parse_url(url, "");
+    assert_eq!(path, "/api/getAll");
+    assert_eq!(query, "");
 }

@@ -11,8 +11,13 @@ impl FromStr for KvPair {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut split = s.splitn(2, "=");
-        let key = split.next().unwrap().to_string();
-        let value = split.next().unwrap().to_string();
+        let key = split.next();
+        let value = split.next();
+        if key.is_none() || value.is_none() {
+            return Err(format!("Invalid KvPair: {}", s).to_string());
+        }
+        let key = key.unwrap().to_string();
+        let value = value.unwrap().to_string();
         Ok(KvPair { k: key, v: value })
     }
 }
