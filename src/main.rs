@@ -1,18 +1,16 @@
+mod service;
+mod utils;
+use service::*;
+
 use image::GenericImageView;
-use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{
-    collections::HashMap,
-    fs::{remove_file, File},
-    path::Path,
-    thread,
-};
+use std::{collections::HashMap, fs::File, thread};
 use tiny_http::{Header, Request, Response, Server};
 use urlencoding::decode;
 
 const PORT: i32 = 8080;
-const THUMB_QUALITY: i8 = 10;
+pub const THUMB_QUALITY: i8 = 10;
 const STATIC_DIR: &str = "./web"; // 指定你的静态文件目录
 
 fn main() {
@@ -119,6 +117,8 @@ fn handle_api(mut request: Request) {
     let mut response: Response<std::io::Cursor<Vec<u8>>> = Response::from_string(result);
     response
         .add_header(Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap());
+    response
+        .add_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
     let _ = request.respond(response);
 }
 
@@ -371,12 +371,16 @@ fn upload(params: HashMap<String, String>) -> String {
         height: height as i64,
     };
     // 上传成功，索引数据落盘
-    Data::add(data).json()
+    // match Data::add(data) {
+    //     Ok(data) => ReqResult::success("上传成功", data).json(),
+    //     Err(e) => ReqResult::error("上传失败", e).json(),
+    // }
+    proc_result(Data::add(data)).json()
 }
 
 fn delete(params: HashMap<String, String>) -> String {
     let url = utils::get_value(&params, "url", String::new());
-    Data::delete_single(&url).json()
+    proc_result(Data::delete_single(&url)).json()
 }
 
 fn delete_all(params: HashMap<String, String>) -> String {
@@ -395,12 +399,12 @@ fn delete_all(params: HashMap<String, String>) -> String {
     let mut results_err = vec![];
     for url in url_split {
         let result = Data::delete_single(url);
-        if !result.is_success() {
+        if !result.is_ok() {
             success = false;
-            results_err.push(result);
+            results_err.push(url);
             continue;
         }
-        results_ok.push(result);
+        results_ok.push(url);
     }
 
     if success {
@@ -420,7 +424,7 @@ fn get_all(params: HashMap<String, String>) -> String {
         None => 0,
     };
     let start = (current - 1) * limit;
-    return Data::get_all(0, 0, start, limit).json();
+    return proc_result(Data::get_all(0, 0, start, limit)).json();
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -432,24 +436,12 @@ struct ReqResult<T> {
 }
 
 impl<T: Serialize> ReqResult<T> {
-    pub fn is_success(&self) -> bool {
-        self.success
-    }
 
     pub fn json(&mut self) -> String {
         if let Ok(json) = serde_json::to_string(self) {
             json
         } else {
             "".to_string()
-        }
-    }
-
-    pub fn conn_error(data: T) -> Self {
-        ReqResult {
-            success: false,
-            code: -120,
-            msg: "数据库连接失败".to_string(),
-            data,
         }
     }
 
@@ -469,496 +461,5 @@ impl<T: Serialize> ReqResult<T> {
             msg: msg.to_string(),
             data,
         }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct UploadArg {
-    name: String,
-    r#type: String,
-    size: String,
-    modify: String,
-    src: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct PageData {
-    list: Vec<Data>,
-    total: i64,
-}
-#[derive(Debug, Serialize, Deserialize)]
-struct Data {
-    name: String,
-    url: String,
-    thumb: String,
-    time: i64,
-    size: i64,
-    width: i64,
-    height: i64,
-}
-
-impl Data {
-    pub fn add(data: Self) -> ReqResult<Self> {
-        // 业务逻辑
-        let add = |conn: Connection, data: Data| {
-            let fields = "name,url,thumb,time,size,width,height";
-            let values = sqlite::turn_values(fields.to_string());
-
-            let (success, msg, code, rows) = sqlite::fmt_result(conn.execute(
-                &format!("INSERT INTO picture ({}) VALUES ({})", fields, values),
-                params![
-                    data.name,
-                    data.url,
-                    data.thumb,
-                    data.time,
-                    data.size,
-                    data.width,
-                    data.height
-                ],
-            ));
-            let _ = conn.close();
-
-            println!(
-                "add picture end; data={:?} rows={} success={} msg={}",
-                data, rows, success, msg
-            );
-            ReqResult {
-                success,
-                code,
-                msg: "上传成功".to_string(),
-                data,
-            }
-        };
-
-        // 成功连接数据库后执行业务逻辑
-        match sqlite::connect() {
-            Ok(conn) => add(conn, data),
-            Err(_) => ReqResult::conn_error(data),
-        }
-    }
-
-    pub fn get_by_url(url: &str, is_thumb: bool) -> Option<Self> {
-        let mut sql = "SELECT * FROM picture where url = ?1".to_string();
-        if is_thumb {
-            sql = "SELECT * FROM picture where thumb = ?1".to_string();
-        }
-
-        let conn = sqlite::connect();
-        if conn.is_err() {
-            return None;
-        }
-
-        let conn = conn.unwrap();
-
-        let mut stmt = conn.prepare(&sql).unwrap();
-        let iter = stmt.query_map(params![url], |row| {
-            let data = Self {
-                name: row.get(0)?,
-                url: row.get(1)?,
-                thumb: row.get(2)?,
-                time: row.get(3)?,
-                size: row.get(4)?,
-                width: row.get(5)?,
-                height: row.get(6)?,
-            };
-            // println!("data={}", data.json());
-            Ok(data)
-        });
-        if iter.is_err() {
-            return None;
-        }
-        let iter = iter.unwrap();
-
-        let mut single = None;
-        for some in iter {
-            if some.is_ok() {
-                single = Some(some.unwrap());
-                break;
-            }
-        }
-        single
-    }
-
-    pub fn get_all(beg: isize, end: isize, start: isize, limit: isize) -> ReqResult<PageData> {
-        let mut condition = String::new();
-        if beg > 0 {
-            if condition != "" {
-                condition.push_str(" and ");
-            }
-            condition.push_str("`create`>=");
-            condition.push_str(&beg.to_string());
-        }
-        if end > 0 {
-            if condition != "" {
-                condition.push_str(" and ");
-            }
-            condition.push_str("`create`<=");
-            condition.push_str(&end.to_string());
-        }
-
-        let mut sql = "SELECT * FROM picture".to_string();
-        if condition != "" {
-            sql += " where ";
-            sql += &condition;
-        }
-        sql += " order by time desc ";
-        if limit > 0 {
-            sql += " limit ";
-            sql += &start.to_string();
-            sql += ",";
-            sql += &limit.to_string();
-            sql += ";";
-        }
-
-        let mut count_sql = "SELECT COUNT(*) as count FROM picture".to_string();
-        if condition != "" {
-            count_sql += " where ";
-            count_sql += &condition;
-        }
-
-        println!("sql==={sql} count_sql={count_sql}");
-
-        let get_all = |conn: Connection| {
-            let mut stmt = conn.prepare(&sql).unwrap();
-
-            let iter = stmt
-                .query_map(params![], |row| {
-                    let data = Self {
-                        name: row.get(0)?,
-                        url: row.get(1)?,
-                        thumb: row.get(2)?,
-                        time: row.get(3)?,
-                        size: row.get(4)?,
-                        width: row.get(5)?,
-                        height: row.get(6)?,
-                    };
-                    // println!("data={}", data.json());
-                    Ok(data)
-                })
-                .unwrap();
-
-            let mut total = 0;
-            let _ = conn.query_row(&count_sql, [], |row| {
-                println!("row={:?}", row);
-                total = row.get_ref(0)?.as_i64()?;
-                Ok(())
-            });
-
-            let mut list: Vec<Self> = Vec::new();
-
-            for some in iter {
-                match some {
-                    Ok(data) => list.push(data),
-                    Err(e) => {
-                        println!("e={}", e);
-                    }
-                }
-            }
-
-            ReqResult {
-                success: true,
-                code: 0,
-                msg: "查询成功".to_string(),
-                data: PageData { list, total },
-            }
-        };
-
-        match sqlite::connect() {
-            Ok(conn) => get_all(conn),
-            Err(_) => ReqResult::conn_error(PageData {
-                list: vec![],
-                total: 0,
-            }),
-        }
-    }
-
-    pub fn del(url: String, is_thumb: bool) -> ReqResult<String> {
-        let del = |conn: Connection, thumb_url: String| {
-            let (success, msg, code, rows) = if is_thumb {
-                sqlite::fmt_result(
-                    conn.execute("DELETE FROM picture WHERE thumb = ?1", params![thumb_url]),
-                )
-            } else {
-                sqlite::fmt_result(
-                    conn.execute("DELETE FROM picture WHERE url = ?1", params![thumb_url]),
-                )
-            };
-            println!(
-                "del picture end; rows={:?} thumb={:?} success={} msg={}",
-                rows, thumb_url, rows, msg
-            );
-            let msg = if success {
-                "删除成功, 行数=".to_string() + &rows.to_string()
-            } else {
-                msg
-            };
-            ReqResult {
-                success,
-                code,
-                msg,
-                data: thumb_url,
-            }
-        };
-        match sqlite::connect() {
-            Ok(conn) => del(conn, url),
-            Err(_) => ReqResult::conn_error(url),
-        }
-    }
-
-    pub fn delete_single(url_arg: &str) -> ReqResult<String> {
-        if url_arg.is_empty() {
-            return ReqResult::error("url不能为空", String::new());
-        }
-        let is_thumn = url_arg.contains("thumb");
-        let data = Data::get_by_url(url_arg, is_thumn);
-        if data.is_none() {
-            return ReqResult::error("找不到需要删除的图片", String::new());
-        }
-
-        let data = data.unwrap();
-        let url = data.url.replace("./res", "./web/res");
-        let thumb = data.thumb.replace("./res", "./web/res");
-
-        let ok = remove_file(Path::new(&thumb)); // 先删掉缩略图
-        if ok.is_err() {
-            println!("delete thumb err={}", ok.unwrap_err());
-            return ReqResult::error("删除缩略图失败", thumb);
-        }
-
-        let ok = remove_file(Path::new(&url));
-        if ok.is_err() {
-            println!("delete img err={}", ok.unwrap_err());
-            return ReqResult::error("删除图片失败",  url);
-        }
-        Data::del(url_arg.to_string(), is_thumn)
-    }
-}
-
-mod sqlite {
-    use rusqlite::{Connection, Error, Result};
-
-    use crate::utils;
-
-    pub fn connect() -> Result<Connection> {
-        utils::check_dir_and_create("./data");
-        Connection::open("./data/data.db")
-    }
-
-    pub fn init_tables() {
-        let init_tables = |conn: Connection| {
-            let result: Result<(), Error> = conn.execute_batch(
-                "BEGIN;
-                CREATE TABLE if not exists picture (
-                    name TEXT NOT NULL DEFAULT '',
-                    url TEXT NOT NULL DEFAULT '',
-                    thumb TEXT NOT NULL DEFAULT '',
-                    time INTEGER NOT NULL DEFAULT 0,
-                    size INTEGER NOT NULL DEFAULT 0,
-                    width INTEGER NOT NULL DEFAULT 0,
-                    height INTEGER NOT NULL DEFAULT 0
-                );
-            COMMIT;",
-            );
-            match result {
-                Err(e) => println!("init table error={e}"),
-                _ => {}
-            };
-        };
-
-        match connect() {
-            Ok(conn) => init_tables(conn),
-            Err(e) => println!("db connect error, {e}"),
-        }
-    }
-
-    // 匹配字段和占位符
-    pub fn turn_values(fields: String) -> String {
-        let size = fields.split(",").collect::<Vec<&str>>().len() + 1;
-        let mut values = String::new();
-        for num in 1..size {
-            values.push_str(&format!("?{}", num));
-            if num == size - 1 {
-                break;
-            }
-            values.push_str(",");
-        }
-        values
-    }
-
-    pub fn fmt_result(result: Result<usize, Error>) -> (bool, String, isize, usize) {
-        let mut tunple = (true, "成功".to_string(), 0, 0);
-        match result {
-            Ok(size) => tunple.3 = size,
-            Err(e) => {
-                tunple.0 = false;
-                tunple.1 = e.to_string();
-            }
-        }
-        if !tunple.0 {
-            tunple.2 = -1;
-        }
-        tunple
-    }
-}
-
-#[allow(dead_code)]
-mod utils {
-    use super::{STATIC_DIR, THUMB_QUALITY};
-    use image::{DynamicImage, GenericImageView};
-    use std::collections::HashMap;
-    use std::io::Write;
-    use std::str::FromStr;
-    use std::time::Instant;
-    use std::{fs::File, io::BufWriter, path::Path};
-
-    /// 检查路径是否存在，不存在则创建路径
-    pub fn check_dir_and_create(path: &str) {
-        if Path::new(path).exists() {
-            return;
-        }
-        match std::fs::create_dir_all(path) {
-            Err(err) => println!("create path {} error: {}", path, err),
-            Ok(_) => println!("create path {} ok", path),
-        }
-    }
-
-    // 获取当前程序运行路径
-    pub fn current_dir() -> String {
-        match std::env::current_dir() {
-            Ok(path) => path.display().to_string().replace("\\", "/"),
-            Err(_) => ".".to_string(),
-        }
-    }
-
-    /// 获取存放路径和 url
-    /// 普通文件：STATIC_DIR/res[/appid]/year_month
-    /// 缩略图：STATIC_DIR/res[/appid]/thumb/year_month
-    /// 普通文件url：./res[/appid]/year_month/uuid8bit.ext
-    /// 缩略图url：./res[/appid]/thumb/year_month/uuid8bit.ext
-    pub fn get_file_path_and_url(
-        is_thumb: bool,
-        appid: Option<&String>,
-        uuid: &str,
-        ext: &str,
-    ) -> (String, String) {
-        let mut path = String::new();
-        path.push_str("/res");
-        if let Some(appid) = appid {
-            path.push_str("/");
-            path.push_str(appid);
-        }
-        if is_thumb {
-            path.push_str("/thumb");
-        }
-        let fmt = "%Y%m";
-        let year_month = chrono::Local::now().format(fmt).to_string();
-        path.push_str("/");
-        path.push_str(&year_month);
-
-        // 此时 path 应该是 /res[/appid][/thumb]/year_month
-        // 对应的就是文件夹，检查一下是否已存在并自动创建
-        check_dir_and_create(&format!("{}{}", STATIC_DIR, path));
-
-        path.push_str("/");
-        path.push_str(uuid);
-        // if is_thumb {
-        //     path.push_str("_thumb");
-        // }
-        path.push_str(".");
-        path.push_str(ext);
-        let url = format!(".{}", path);
-        let file_path = format!("{}{}", STATIC_DIR, path);
-        (file_path, url)
-    }
-
-    // 从 map 中获取指定 key 的值，并转换为指定类型，如果转换失败则返回默认值
-    pub fn get_value<T: ToString + FromStr>(
-        params: &HashMap<String, String>,
-        key: &str,
-        default_value: T,
-    ) -> T {
-        let binding = default_value.to_string();
-        let size = params.get(key).or(Some(&binding)).unwrap();
-        if let Ok(size) = size.parse() {
-            size
-        } else {
-            default_value
-        }
-    }
-
-    // 缩小图片
-    pub fn resize_image(img: Box<DynamicImage>, process_origin: bool) -> Box<DynamicImage> {
-        let thumbnail_size = 300;
-        let (width, height) = img.dimensions();
-
-        if width <= thumbnail_size || height <= thumbnail_size {
-            return img;
-        }
-
-        let mut nwidth = width;
-        let mut nheight = height;
-
-        if width > height {
-            // h=316 target_h=250 w=1415
-            // target_w=250/316*1415
-            nwidth = (thumbnail_size as f32 / height as f32 * width as f32) as u32;
-        }
-        if height > width {
-            nheight = (thumbnail_size as f32 / width as f32 * height as f32) as u32;
-        }
-
-        // 存储原图的话，先压缩原图，再生成缩略图，基本能保证最终的缩略图大小范围在 20k 内
-        if process_origin {
-            if let Ok(img) = compress_img(&img, THUMB_QUALITY) {
-                if let Ok(img) = image::load_from_memory(&img) {
-                    return Box::new(img.resize(
-                        nwidth,
-                        nheight,
-                        image::imageops::FilterType::Nearest,
-                    ));
-                }
-            }
-        }
-
-        // 将原始尺寸的图片缩小到指定尺寸
-        return Box::new(img.resize(nwidth, nheight, image::imageops::FilterType::Nearest));
-    }
-
-    // 根据 img 压缩成 webp 格式
-    pub fn compress_img(img: &DynamicImage, qulity: i8) -> Result<Vec<u8>, String> {
-        match webp::Encoder::from_image(img) {
-            Err(err) => Err(err.to_string()),
-            Ok(encoder) => {
-                let webp = encoder.encode(qulity as f32);
-                Ok(webp.to_vec())
-            }
-        }
-    }
-
-    // 保存图片到指定路径
-    pub fn save_img(buf: &[u8], file_path: &str) -> Result<usize, String> {
-        let start_time = std::time::Instant::now();
-        let create_result = File::create(file_path);
-        if let Err(err) = create_result {
-            return Err(err.to_string());
-        }
-        let file = create_result.expect("create file error.");
-        let write_result = BufWriter::new(file).write(&buf);
-        if let Err(err) = write_result {
-            return Err(err.to_string());
-        }
-        let size = write_result.expect("write img error.");
-        let info = format!("save img path={}, size={}", file_path, size);
-        log_time_used(start_time, &info);
-        Ok(size)
-    }
-
-    pub fn log_time_used(start_time: Instant, info: &str) {
-        let end_time = Instant::now();
-        println!(
-            "Info: {} time={:?}",
-            info,
-            end_time.duration_since(start_time)
-        );
     }
 }
