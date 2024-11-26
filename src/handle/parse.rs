@@ -1,6 +1,21 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use urlencoding::decode;
+
+pub struct KvPair {
+    k: String,
+    v: String,
+}
+impl FromStr for KvPair {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut split = s.splitn(2, "=");
+        let key = split.next().unwrap().to_string();
+        let value = split.next().unwrap().to_string();
+        Ok(KvPair { k: key, v: value })
+    }
+}
 
 // get 方法获取url
 pub fn parse_url<'a>(url: &'a str, body: &'a str) -> (&'a str, &'a str) {
@@ -19,36 +34,39 @@ pub fn parse_url<'a>(url: &'a str, body: &'a str) -> (&'a str, &'a str) {
     }
 }
 
-// 解析 url 地址，返回 url 和请求参数体的元组
-pub fn parse_request(body: &str, is_json: bool) -> HashMap<String, String> {
-    // println!("body====={}", body);
-    // let parse = decode(&body).expect("UTF-8"); // 解码
-    let parse = body;
-    // println!("decode====={}", a);
+// 解析请求体，返回键值对
+pub fn parse_body(body: &str) -> HashMap<String, String> {
     let mut params = HashMap::new();
-
-    if is_json {
-        // extract_known_fields(parse, &params);
-        // return params;
-    }
-
-    for kv in parse.split("&").collect::<Vec<&str>>().iter() {
-        let kv_string = kv.to_string();
-        let kv_split = kv_string.split("=").collect::<Vec<&str>>();
-        if kv_split.len() == 1 {
-            params.insert(kv_split[0].to_string(), "".to_string());
-        } else if kv_split.len() > 1 {
-            params.insert(
-                kv_split[0].to_string(),
-                decode(kv_split[1]).expect("UTF-8").to_string(),
-            );
+    for kv in body.split("&").collect::<Vec<&str>>().iter() {
+        if let Ok(pair) = kv.parse::<KvPair>() {
+            if pair.k.is_empty() {
+                continue;
+            }
+            let v = decode(&pair.v).expect("UTF-8").to_string();
+            params.insert(pair.k.to_string(), v);
         }
     }
-    params.remove("");
-
-    // if parse != "" {
-    // println!("解析参数 args={:?} params={:?}", parse, params);
-    // }
-
     params
 }
+
+pub fn parse_content_type(start_url: &str) -> &str {
+    // content_type.parse().unwrap_or(MIME::Any)
+    match start_url {
+        _ if start_url.ends_with(".html") => "text/html; charset=UTF-8",
+        _ if start_url.ends_with(".css") => "text/css; charset=UTF-8",
+        _ if start_url.ends_with(".js") => "text/javascript; charset=UTF-8",
+        _ if start_url.ends_with(".json") => "application/json; charset=UTF-8",
+        _ if start_url.ends_with(".xml") => "application/xml; charset=UTF-8",
+        _ if start_url.ends_with(".pdf") => "application/pdf",
+        _ if start_url.ends_with(".png") => "image/png",
+        _ if start_url.ends_with(".jpg") => "image/jpeg",
+        _ if start_url.ends_with(".jpeg") => "image/jpeg",
+        _ if start_url.ends_with(".gif") => "image/gif",
+        _ if start_url.ends_with(".svg") => "image/svg+xml; charset=UTF-8",
+        _ if start_url.ends_with(".webp") => "image/webp",
+        _ if start_url.ends_with(".ogg") => "video/ogg",
+        _ if start_url.ends_with(".mp4") => "video/mp4",
+        _ => "text/html; charset=UTF-8",
+    }
+}
+
