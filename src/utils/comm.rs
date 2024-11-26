@@ -1,7 +1,6 @@
 use std::{collections::HashMap, path::Path, str::FromStr};
 
-// const STATIC_DIR: &str = "./web"; // 指定你的静态文件目录
-use crate::{ReqResult, STATIC_DIR};
+use crate::{ReqResult, RESOURCE_DIR};
 
 /// 检查路径是否存在，不存在则创建路径
 pub fn check_dir_and_create(path: &str) {
@@ -23,43 +22,38 @@ pub fn current_dir() -> String {
 }
 
 /// 获取存放路径和 url
-/// 普通文件：STATIC_DIR/res[/appid]/year_month
-/// 缩略图：STATIC_DIR/res[/appid]/thumb/year_month
-/// 普通文件url：./res[/appid]/year_month/uuid8bit.ext
-/// 缩略图url：./res[/appid]/thumb/year_month/uuid8bit.ext
+/// 普通文件: RESOURCE_DIR[/appid]/year_month
+/// 缩略图: RESOURCE_DIR[/appid]/thumb/year_month
+/// 普通文件url: RESOURCE_DIR[/appid]/year_month/uuid8bit.ext
+/// 缩略图url: RESOURCE_DIR[/appid]/thumb/year_month/uuid8bit.ext
 pub fn get_file_path_and_url(
     is_thumb: bool,
     appid: Option<&String>,
     uuid: &str,
     ext: &str,
 ) -> (String, String) {
-    let mut path = String::new();
-    path.push_str("/res");
+    let mut directory = String::new();
+    directory.push_str(RESOURCE_DIR);
     if let Some(appid) = appid {
-        path.push_str("/");
-        path.push_str(appid);
+        directory.push_str("/");
+        directory.push_str(appid);
     }
     if is_thumb {
-        path.push_str("/thumb");
+        directory.push_str("/thumb");
     }
     let fmt = "%Y%m";
     let year_month = chrono::Local::now().format(fmt).to_string();
-    path.push_str("/");
-    path.push_str(&year_month);
-
-    // 此时 path 应该是 /res[/appid][/thumb]/year_month
+    directory.push_str("/");
+    directory.push_str(&year_month);
+    // directory.push_str("/");
+    // 此时 path 应该是 /RESOURCE_DIR[/appid][/thumb]/year_month
     // 对应的就是文件夹，检查一下是否已存在并自动创建
-    check_dir_and_create(&format!("{}{}", STATIC_DIR, path));
+    check_dir_and_create(&directory);
 
-    path.push_str("/");
-    path.push_str(uuid);
-    // if is_thumb {
-    //     path.push_str("_thumb");
-    // }
-    path.push_str(".");
-    path.push_str(ext);
-    let url = format!(".{}", path);
-    let file_path = format!("{}{}", STATIC_DIR, path);
+    let filename = format!("{}.{}", uuid, ext);
+
+    let file_path = format!("{}/{}", directory, filename);
+    let url = format!("{}/{}", directory, filename);
     (file_path, url)
 }
 

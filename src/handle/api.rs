@@ -27,7 +27,7 @@ fn test(params: HashMap<String, String>) -> String {
 fn upload(params: HashMap<String, String>) -> String {
     // println!("{:?}", params);
     let quality = utils::get_value(&params, "quality", 40);
-    // 图片存放目录，默认为 ./web/res/
+    // 图片存放目录，默认为 RESOURCE_DIR/
     let appid = params.get("appid");
     // 先判断是否需要压缩图片
     let origin_upload = quality >= 100 || quality < 10;
@@ -37,9 +37,12 @@ fn upload(params: HashMap<String, String>) -> String {
     } else {
         "webp".to_string()
     };
-    println!(
-        "匹配到了 /upload, qulity={} file_type={} use_origin={}",
-        quality, file_type, origin_upload
+    utils::log(
+        "Info",
+        &format!(
+            "/upload, qulity={} file_type={} use_origin={}",
+            quality, file_type, origin_upload
+        ),
     );
 
     let name = match params.get("name") {

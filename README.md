@@ -21,7 +21,7 @@ Frontend: Vanlla JavaScript + HTML + CSS
 
 Index database will be created at `data/data.db`.
 
-Picture files will be stored at `web/res/pictures`, every picture will have a unique UUID as its filename, and it will be generated a thumbnail when uploaded. The thumbnail is used for displaying in the frontend of list page.
+Picture files will be stored at `res/pictures`, every picture will have a unique UUID as its filename, and it will be generated a thumbnail when uploaded. The thumbnail is used for displaying in the frontend of list page.
 
 ## Usage
 

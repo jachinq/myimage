@@ -6,7 +6,7 @@ services:
     ports:
       - 10016:8080  # you can change the port 10016 to any other port you want
     volumes:
-      - ./res:/home/myapp/web/res
+      - ./res:/home/myapp/res
       - ./data:/home/myapp/data
       - /etc/localtime:/etc/localtime
     restart: unless-stopped

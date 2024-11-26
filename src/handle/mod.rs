@@ -7,12 +7,16 @@ use tiny_http::{Header, Request, Response};
 
 use std::{fs::File, io::Cursor, path::Path};
 
-use crate::STATIC_DIR;
+use crate::{utils, RESOURCE_DIR, STATIC_DIR};
 
 pub fn proc_request(mut request: Request) {
+
+    let log_url = request.url().to_string();
+    let start = std::time::Instant::now();
+    let ip = get_ip(&request);
+
     // http://xx.yy.zz/aaa/bbb/ccc -> aaa/bbb/ccc
     let start_url = request.url().trim_start_matches('/');
-    // println!("request url: {}, \nrequest start: {}", request.url(), start_url);
     let is_api = start_url.contains("api/");
     if is_api {
          // 处理api请求
@@ -33,14 +37,18 @@ pub fn proc_request(mut request: Request) {
             }
         };
     }
+    utils::log_req(start, &log_url, &ip);
 }
 
 pub fn handle_static(request: &Request) -> anyhow::Result<Response<File>, anyhow::Error> {
     let start_url = request.url().trim_start_matches('/');
     let file_name = match start_url {
         "" => format!("{}/index.html", STATIC_DIR),
+        _ if start_url.starts_with(RESOURCE_DIR) => start_url.to_string(),
         other => format!("{}/{}", STATIC_DIR, other),
     };
+    // println!("get filename: {}", file_name);
+
     let mut content_type = parse_content_type(start_url);
     let file_name = if Path::new(&file_name).exists() {
         file_name
@@ -59,12 +67,6 @@ pub fn handle_static(request: &Request) -> anyhow::Result<Response<File>, anyhow
 
 // 转发请求到不同的方法进行处理
 pub fn handle_api(request: &mut Request) -> anyhow::Result<Response<Cursor<Vec<u8>>>, anyhow::Error> {
-    println!(
-        "request: method: {:?}, url: {:?}",
-        request.method(),
-        request.url()
-    );
-
     let mut body = String::new();
     let _ = request.as_reader().read_to_string(&mut body);
     let (url, body) = parse_url(request.url(), &body);

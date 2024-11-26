@@ -1,5 +1,8 @@
+#![allow(dead_code)]
+
 use std::{collections::HashMap, str::FromStr};
 
+use tiny_http::{Header, Request};
 use urlencoding::decode;
 
 pub struct KvPair {
@@ -75,3 +78,18 @@ pub fn parse_content_type(start_url: &str) -> &str {
     }
 }
 
+pub fn get_ip(headers: &Request) -> String {
+    headers.remote_addr().ip().to_string()
+}
+pub fn get_user_agent(headers: &[Header]) -> String {
+    parse_heade_value(headers, "User-Agent")
+}
+pub fn parse_heade_value(headers: &[Header], field: &str) -> String {
+    for header in headers {
+        println!("{}: {}", header.field, header.value);
+        if header.field.as_str() == field {
+            return header.value.to_string();
+        }
+    }
+    "unknown".to_string()
+}

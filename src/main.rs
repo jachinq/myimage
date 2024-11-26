@@ -11,7 +11,8 @@ use tiny_http::Server;
 
 const PORT: i32 = 8080;
 pub const THUMB_QUALITY: i8 = 10;
-const STATIC_DIR: &str = "./web"; // 指定你的静态文件目录
+const STATIC_DIR: &str = "web"; // 指定你的静态文件目录
+const RESOURCE_DIR: &str = "res"; // 指定存放图片的目录
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ReqResult<T> {

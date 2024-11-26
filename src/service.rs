@@ -201,18 +201,18 @@ impl Data {
         }
 
         let data = data.unwrap();
-        let url = data.url.replace("./res", "./web/res");
-        let thumb = data.thumb.replace("./res", "./web/res");
+        let url = data.url;
+        let thumb = data.thumb;
 
         let ok = remove_file(Path::new(&thumb)); // 先删掉缩略图
         if ok.is_err() {
-            println!("delete thumb err={}", ok.unwrap_err());
+            println!("delete thumb err={}, path={}", ok.unwrap_err(), thumb);
             return Err(anyhow!("删除缩略图失败"));
         }
 
         let ok = remove_file(Path::new(&url));
         if ok.is_err() {
-            println!("delete img err={}", ok.unwrap_err());
+            println!("delete img err={}, path={}", ok.unwrap_err(), url);
             return Err(anyhow!("删除图片失败"));
         }
         Data::del(url_arg.to_string(), is_thumn)
