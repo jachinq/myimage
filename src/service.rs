@@ -3,7 +3,7 @@ use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::{fs::remove_file, path::Path};
 
-use crate::ReqResult;
+use crate::{utils::Matcher, ReqResult};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PageData {
@@ -23,6 +23,18 @@ pub struct Data {
 }
 
 impl Data {
+    fn map_to_data(row: &rusqlite::Row) -> Result<Self> {
+        Ok(Self {
+            name: row.get(0)?,
+            url: row.get(1)?,
+            thumb: row.get(2)?,
+            time: row.get(3)?,
+            size: row.get(4)?,
+            width: row.get(5)?,
+            height: row.get(6)?,
+        })
+    }
+
     pub fn add(data: Self) -> Result<Self, Error> {
         // 成功连接数据库后执行业务逻辑
         let conn = sqlite::connect()?;
@@ -94,72 +106,28 @@ impl Data {
         single
     }
 
-    pub fn get_all(beg: isize, end: isize, start: isize, limit: isize) -> Result<PageData, Error> {
-        let mut condition = String::new();
-        if beg > 0 {
-            if condition != "" {
-                condition.push_str(" and ");
-            }
-            condition.push_str("`create`>=");
-            condition.push_str(&beg.to_string());
-        }
-        if end > 0 {
-            if condition != "" {
-                condition.push_str(" and ");
-            }
-            condition.push_str("`create`<=");
-            condition.push_str(&end.to_string());
-        }
-
-        let mut sql = "SELECT * FROM picture".to_string();
-        if condition != "" {
-            sql += " where ";
-            sql += &condition;
-        }
-        sql += " order by time desc ";
-        if limit > 0 {
-            sql += " limit ";
-            sql += &start.to_string();
-            sql += ",";
-            sql += &limit.to_string();
-            sql += ";";
-        }
-
-        let mut count_sql = "SELECT COUNT(*) as count FROM picture".to_string();
-        if condition != "" {
-            count_sql += " where ";
-            count_sql += &condition;
-        }
+    pub fn get_list(mut matcher: Matcher) -> Result<PageData, Error> {
+        matcher.table("picture");
+        matcher.fields(&["*"]);
+        let sql = matcher.build();
+        let count_sql = matcher.build_count();
 
         // println!("sql==={sql} count_sql={count_sql}");
         let conn = sqlite::connect()?;
+        let mut stmt = conn.prepare(&sql)?;
 
-        let mut stmt = conn.prepare(&sql).unwrap();
-
-        let iter = stmt.query_map(params![], |row| {
-            let data = Self {
-                name: row.get(0)?,
-                url: row.get(1)?,
-                thumb: row.get(2)?,
-                time: row.get(3)?,
-                size: row.get(4)?,
-                width: row.get(5)?,
-                height: row.get(6)?,
-            };
-            // println!("data={}", data.json());
-            Ok(data)
-        })?;
+        let iter = stmt.query_map(params![], |row| Ok(Self::map_to_data(row)))?;
 
         let total = conn.query_row(&count_sql, [], |row| {
-            println!("row={:?}", row);
+            // println!("row={:?}", row);
             let total = row.get_ref(0)?.as_i64()?;
             Ok(total)
         })?;
 
-        let mut list: Vec<Self> = Vec::new();
+        let mut list = Vec::new();
 
         for some in iter {
-            list.push(some?);
+            list.push(some??);
         }
 
         Ok(PageData { list, total })

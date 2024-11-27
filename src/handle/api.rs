@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use image::GenericImageView;
 
-use crate::{proc_result, utils, Data, ReqResult, THUMB_QUALITY};
+use crate::{proc_result, utils::{self, Matcher, Object, Op}, Data, ReqResult, THUMB_QUALITY};
 
 use super::parse_body;
 
@@ -10,7 +10,7 @@ pub fn get_api_data(url: &str, body: &str) -> String {
     let params = parse_body(&body);
     match &url.replace("api/", "") as &str {
         "/test" => test(params),
-        "/getAll" => get_all(params),
+        "/getList" => get_list(params),
         "/upload" => upload(params),
         "/delete" => delete(params),
         "/deleteAll" => delete_all(params),
@@ -197,15 +197,23 @@ fn delete_all(params: HashMap<String, String>) -> String {
     }
 }
 
-fn get_all(params: HashMap<String, String>) -> String {
-    let current = match params.get("current") {
-        Some(current) => current.parse().unwrap(),
-        None => 1,
-    };
-    let limit = match params.get("limit") {
-        Some(current) => current.parse().unwrap(),
-        None => 0,
-    };
+fn get_list(params: HashMap<String, String>) -> String {
+    let beg = utils::get_value(&params, "beg", 0);
+    let end = utils::get_value(&params, "end", 0);
+    let current = utils::get_value(&params, "current", 1);
+    let limit = utils::get_value(&params, "limit", -1);
     let start = (current - 1) * limit;
-    return proc_result(Data::get_all(0, 0, start, limit)).json();
+
+    let mut matcher = Matcher::new();
+    if beg > 0 {
+        matcher.and("time", Op::GtEq, Object::Int(beg));
+    }
+    if end > 0 {
+        matcher.and("time", Op::LtEq, Object::Int(end));
+    }
+
+    matcher.limit(limit);
+    matcher.offset(start);
+    matcher.order_by("time", true);
+    return proc_result(Data::get_list(matcher)).json();
 }

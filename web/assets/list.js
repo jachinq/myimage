@@ -75,10 +75,10 @@ function package_pageInfo(total) {
     pageInfo.max = max_page;
 }
 
-function getAll() {
+function getList() {
     const box = document.getElementsByClassName("list-box")[0];
     box.innerHTML = "";
-    fetch(`${host}/api/getAll?current=${pageInfo.current}&limit=${pageInfo.limit}`)
+    fetch(`${host}/api/getList?current=${pageInfo.current}&limit=${pageInfo.limit}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -109,7 +109,7 @@ function getAll() {
         .catch(err => console.log('Request Failed', err));
 }
 
-document.addEventListener('DOMContentLoaded', getAll);
+document.addEventListener('DOMContentLoaded', getList);
 
 function selected_picture(checkbox, img) {
     const current_url = img.getAttribute("src");
@@ -148,14 +148,14 @@ window.addEventListener('load', () => {
             return
         }
         pageInfo.current -= 1;
-        getAll();
+        getList();
     })
     document.getElementById("next_page").addEventListener("click", () => {
         if (pageInfo.current + 1 > pageInfo.max) {
             return
         }
         pageInfo.current += 1;
-        getAll();
+        getList();
     })
     const select_pic = document.getElementById("select-pic");
     const select_del = document.getElementById("select-del");
