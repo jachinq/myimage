@@ -70,14 +70,20 @@ function getCookie(cname) {
 
 const theme_cookie_key = "easyImageDarkTheme";
 function initThemeBtn() {
+    let exist = document.getElementsByClassName("theme");
+    if (exist.length > 0) {
+        return;
+    }
     const themeEle = document.createElement("div");
-    const btn = document.createElement("div");
+    const btn = document.createElement("a");
     btn.addEventListener('click', () => changeTheme(btn));
     themeEle.classList.add("theme");
     themeEle.appendChild(btn);
-    document.body.appendChild(themeEle);
+    // document.body.appendChild(themeEle);
+    document.getElementsByClassName("header")[0].appendChild(themeEle);
     changeTheme(btn, true);
 }
+initThemeBtn();
 
 function changeTheme(btn, init) {
     let darkValue = getCookie(theme_cookie_key);
@@ -92,14 +98,38 @@ function changeTheme(btn, init) {
 
     const root=document.querySelector(":root")
     if (dark) {
-        root.style.setProperty("--text","white")
-        root.style.setProperty("--bg","black")
-        root.style.setProperty("--primary","rgb(108 173 151)")
-        root.style.setProperty("--shadow","rgba(255, 255, 255, 0.15)")
+        root.style.setProperty("--text","var(--light)")
+        root.style.setProperty("--text-hover","var(--dark)")
+        root.style.setProperty("--bg","var(--dark)")
+        root.style.setProperty("--bg-header","var(--header-dark)")
+        root.style.setProperty("--primary","var(--primary-dark)")
+        root.style.setProperty("--primary-hover","var(--primary-light)")
+        root.style.setProperty("--shadow","0px 0px 0px ragb(0,0,0,0)")
     } else {
-        root.style.setProperty("--bg","white")
-        root.style.setProperty("--text","black")
-        root.style.setProperty("--primary","rgb(108 173 151)")
-        root.style.setProperty("--shadow","rgba(0, 0, 0, 0.1)")
+        root.style.setProperty("--text","var(--dark)")
+        root.style.setProperty("--text-hover","var(-light)")
+        root.style.setProperty("--bg","var(--light)")
+        root.style.setProperty("--bg-header","var(--header-light)")
+        root.style.setProperty("--primary","var(--primary-light)")
+        root.style.setProperty("--primary-hover","var(--primary-dark)")
+        root.style.setProperty("--shadow","0 2px 4px rgba(0, 0, 0, 0.1)")
     }
+}
+
+const resetContainerMarginTop = () => {
+    let header = document.getElementsByClassName("header")[0];
+    let container = document.getElementsByClassName("container")[0];
+    if (!header || !container) {
+        return;
+    }
+    let height = header.clientHeight;
+    console.log("height", height);
+    container.style.marginTop = height + 16 + "px";
+}
+
+window.onresize = function() {
+    resetContainerMarginTop();
+}
+window.onload = function() {
+    resetContainerMarginTop();
 }

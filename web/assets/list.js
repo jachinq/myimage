@@ -238,8 +238,6 @@ window.addEventListener('load', () => {
 
         }
     });
-
-    initThemeBtn();
 })
 
 

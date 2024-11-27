@@ -5,27 +5,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EasyImage | 简单图床</title>
-    <link rel="stylesheet" href="./assets/comm.css">
+    <link rel="stylesheet" href="/assets/comm.css">
+    <link rel="stylesheet" href="/assets/list.css">
 </head>
 
 <body class="list">
     <div class="header">
-        <a href="/">首页</a>
-        <a href="/list.html">列表</a>
-
-        <div class="page-box">
-            <button id="pre_page">上一页</button>
-            <span id="current"></span>
-            <button id="next_page">下一页</button>
-            <span id="total"></span>
-            <a id="select-pic">多选</a>
-            <a id="select-all" style="display: none;">全选</a>
-            <a id="select-del" style="display: none;" class="del">删除选中</a>
+        <div>
+            <a href="/">首页</a>
+            <a href="/list.html">列表</a>
+    
+            <div class="page-box">
+                <button id="pre_page">上一页</button>
+                <span id="current"></span>
+                <button id="next_page">下一页</button>
+                <span id="total"></span>
+                <a id="select-pic">多选</a>
+                <a id="select-all" style="display: none;">全选</a>
+                <a id="select-del" style="display: none;" class="del">删除选中</a>
+            </div>
         </div>
     </div>
 
-
-    <div class="list-box"></div>
+    <div class="container">
+        <div class="list-box"></div>
+    </div>
 
     <dialog id="dialog">
         <div class="dialog-box">
@@ -132,8 +136,8 @@
     </dialog>
 </body>
 
-<script src="./assets/toast.js"></script>
-<script src="./assets/comm.js"></script>
-<script src="./assets/list.js"></script>
+<script src="/assets/toast.js"></script>
+<script src="/assets/comm.js"></script>
+<script src="/assets/list.js"></script>
 
 </html>
