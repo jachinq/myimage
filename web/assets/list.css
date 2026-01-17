@@ -1,111 +1,548 @@
-/* list */
+/* ============================================
+   图片列表 - 现代化设计系统
+============================================ */
+
+/* 列表容器 */
 .list-box {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
     padding: 0 1rem;
-    /* justify-content: center; */
+    animation: fade-in-up 0.5s ease;
 }
 
-.thumb-box:hover {
-    cursor: pointer;
-    transform: translateY(-2px);
-    border-color: var(--bg-header);
-}
-
+/* 图片卡片 */
 .thumb-box {
     position: relative;
-    transition: all ease-in-out 0.2s;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    animation: fade-in-up 0.5s ease;
+    animation-fill-mode: both;
 }
 
+/* 卡片进入动画延迟 */
+.thumb-box:nth-child(1) { animation-delay: 0ms; }
+.thumb-box:nth-child(2) { animation-delay: 50ms; }
+.thumb-box:nth-child(3) { animation-delay: 100ms; }
+.thumb-box:nth-child(4) { animation-delay: 150ms; }
+.thumb-box:nth-child(5) { animation-delay: 200ms; }
+.thumb-box:nth-child(6) { animation-delay: 250ms; }
+.thumb-box:nth-child(7) { animation-delay: 300ms; }
+.thumb-box:nth-child(8) { animation-delay: 350ms; }
+
+.thumb-box:hover {
+    transform: translateY(-8px);
+    border-color: var(--accent-glow);
+    box-shadow: var(--shadow-glow);
+}
+
+/* 图片容器 */
 .thumb-img {
-    --size: 250px;
-    max-height: var(--size);
-    max-width: var(--size);
-    min-height: var(--size);
-    min-width: var(--size);
-    margin: 2px;
-    /* border: #7d9c90 1px solid; */
+    width: 100%;
+    aspect-ratio: 1;
     object-fit: cover;
-    border-radius: 8px;
     display: block;
+    transition: transform var(--transition-slow);
 }
 
-.page-box {
-    display: inline-block;
+.thumb-box:hover .thumb-img {
+    transform: scale(1.05);
 }
 
-.page-box span {
-    font-size: 18px;
+/* 图片信息覆盖层 */
+.thumb-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    opacity: 0;
+    transition: opacity var(--transition-normal);
 }
 
-.page-box button {
+.thumb-box:hover .thumb-overlay {
+    opacity: 1;
+}
+
+.thumb-info {
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.thumb-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thumb-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.8);
+}</* 选择框 */
+.select-checkbox {
+    --size: 32px;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: var(--size);
+    height: var(--size);
+    z-index: 10;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.thumb-box:hover .select-checkbox {
+    opacity: 1;
+}
+
+.select-checkbox input[type="checkbox"] {
+    width: 100%;
+    height: 100%;
     margin: 0;
-    padding: 2px 5px;
-    font-size: 16px;
+    cursor: pointer;
+    accent-color: var(--accent);
 }
 
+/* 多选模式显示选择框 */
+.list.select-mode .select-checkbox {
+    opacity: 1;
+}
+
+/* ============================================
+   分页控件和头部操作
+============================================ */
+
+/* 头部操作栏 */
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 1rem;
+}
+
+.header > div {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+}
+
+/* 分页控件容器 */
+.page-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(10px);
+}
+
+/* 分页信息 */
+.page-box #current,
+.page-box #total {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 60px;
+    text-align: center;
+}
+
+/* 分页按钮 */
+.page-box button {
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.page-box button:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.page-box button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* 操作按钮 */
+#select-pic,
+#select-all,
+#select-del {
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+#select-pic:hover,
+#select-all:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg-primary);
+}
+
+#select-del {
+    background: var(--error);
+    border-color: var(--error);
+    color: #fff;
+}
+
+#select-del:hover {
+    background: #ef4444;
+    box-shadow: 0 4px 16px rgba(248, 113, 113, 0.4);
+    transform: translateY(-2px);
+}
+
+/* ============================================
+   图片预览弹窗
+============================================ */
+
+/* 控制栏 */
 .control {
     position: fixed !important;
-    bottom: 1rem;
+    bottom: 2rem;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    padding: 1rem;
-}
-
-.control button {
-    padding: 4px;
-    display: flex;
-    justify-content: center;
     align-items: center;
-    width: 30px;
-    height: 30px;
-    margin-bottom: 1rem;
+    gap: 8px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 12px 20px;
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
 }
 
+/* 控制按钮 */
 .control a {
-    border-radius: 4px;
-    padding: 3px;
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+.control a:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.control a.del:hover {
+    background: var(--error);
+    border-color: var(--error);
+}
+
+/* 按钮图标 */
+.control a svg {
+    width: 22px;
+    height: 22px;
+    fill: var(--text-primary);
+    transition: fill var(--transition-fast);
+}
+
+.control a:hover svg {
+    fill: var(--bg-primary);
+}
+
+/* 工具提示 */
+.control a .tips {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+    z-index: 101;
+}
+
+.control a:hover .tips {
+    opacity: 1;
+}
+
+/* 弹窗样式 */
+dialog {
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: dialog-in 0.3s ease;
+}
+
+@keyframes dialog-in {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* 弹窗内容 */
+dialog .content {
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+}
+
+dialog img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    transition: transform var(--transition-normal);
+}
+
+/* 弹窗遮罩 */
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    animation: backdrop-in 0.3s ease;
+}
+
+@keyframes backdrop-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ============================================
+   响应式设计
+============================================ */
+
+/* 平板设备 */
+@media screen and (max-width: 768px) {
+    .list-box {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 16px;
+    }
+
+    .header > div {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .page-box {
+        padding: 10px 16px;
+        gap: 8px;
+    }
+
+    .control {
+        bottom: 1rem;
+        padding: 10px 16px;
+        gap: 6px;
+    }
+
+    .control a {
+        width: 40px;
+        height: 40px;
+    }
+
+    .control a svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* 手机设备 */
+@media screen and (max-width: 480px) {
+    .list-box {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+        padding: 0 0.5rem;
+    }
+
+    .thumb-overlay {
+        display: none;
+    }
+
+    .page-box {
+        flex-wrap: wrap;
+        padding: 8px 12px;
+    }
+
+    .page-box #current,
+    .page-box #total {
+        font-size: 14px;
+        min-width: 40px;
+    }
+
+    .page-box button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    #select-pic,
+    #select-all,
+    #select-del {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .control {
+        flex-wrap: wrap;
+        bottom: 0.5rem;
+        padding: 8px 12px;
+    }
+
+    .control a {
+        width: 36px;
+        height: 36px;
+    }
+
+    .control a svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .control a .tips {
+        display: none;
+    }
+}
+
+/* ============================================
+   空状态和加载状态
+============================================ */
+
+/* 空状态 */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.empty-state svg {
+    width: 80px;
+    height: 80px;
+    fill: var(--text-muted);
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* 加载状态 */
+.loading {
     display: flex;
     justify-content: center;
     align-items: center;
-    /* background-color: rgba(0, 0, 0, 0.3); */
-}
-.control a:hover {
-    background-color: rgba(0, 0, 0, 0.3);
+    padding: 2rem;
 }
 
-.control .tips {
-    width: 80px;
-    display: none;
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* ============================================
+   辅助功能
+============================================ */
+
+/* 隐藏元素 */
+.hidden {
+    display: none !important;
+}
+
+/* 选中状态 */
+.thumb-box.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.thumb-box.selected::before {
+    content: '✓';
     position: absolute;
-    top: -2rem;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    padding: 5px;
-    border-radius: 4px;
-    text-align: center;
-    font-size: 16px;
+    top: 8px;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    background: var(--accent);
+    color: var(--bg-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 10;
 }
 
-.select-checkbox {
-    --size: 32px;
-    width: var(--size);
-    height: var(--size);
-    position: absolute;
-    top: 0;
-    right: 0;
-    /* margin: 1rem; */
+/* 键盘焦点 */
+.thumb-box:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
-/* dialog 默认的选中样式，很丑，干掉*/
+/* 动画优化 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* dialog 默认样式重置 */
 dialog:-internal-dialog-in-top-layer {
     user-select: none;
     visibility: inherit;
@@ -118,31 +555,4 @@ dialog button:focus-visible {
 dialog button:hover .tips,
 dialog a:hover .tips {
     display: block;
-}
-
-dialog {
-    padding: 0;
-    border: none;
-    /* border-radius: 4px; */
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-    /* transition: all 0.2s ease-in-out; */
-    /* max-width: 100%; */
-    border-radius: 8px;
-    /* max-width: 80%; */
-}
-
-dialog img {
-    /* max-width: 100%; */
-    /* max-height: 100%; */
-    display: block;
-    transition: all 0.4s ease-in-out;
-}
-
-dialog .content {
-    overflow: scroll;
-    object-fit: cover;
-}
-
-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.6);
 }
