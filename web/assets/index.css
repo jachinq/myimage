@@ -1,224 +1,467 @@
-.center {
-    display: flex;
-    flex-direction: column;
+/* 上传区域 */
+.upload-section {
+    margin-bottom: 32px;
+}
+
+.upload-zone {
+    position: relative;
+    padding: 64px 32px;
+    background: var(--bg-glass);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-xl);
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    animation: breathe 4s ease-in-out infinite;
+    overflow: hidden;
+}
+
+.upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, var(--accent-glow), transparent 70%);
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+    pointer-events: none;
+}
+
+.upload-zone:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-glass-hover);
+}
+
+.upload-zone:hover::before {
+    opacity: 0.5;
+}
+
+.upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    transform: scale(1.01);
+    animation: none;
+}
+
+.upload-zone.drag-over::before {
+    opacity: 1;
+}
+
+.upload-zone.drag-over .upload-icon-wrapper {
+    transform: translateY(-8px);
+}
+
+.upload-zone.drag-over .upload-icon {
+    stroke: var(--accent);
+}
+
+.upload-content {
+    position: relative;
+    z-index: 1;
+}
+
+.upload-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
-}
-.center-box {
-    min-width: 880px;
-    margin: 0 auto;
-}
-@media screen and (max-width: 880px) {
-    .center-box {
-        min-width: 100%;
-    }
-}
-@media screen and (max-width: 400px) {
-    .center-box {
-        min-width: 400px;
-    }
-    .header .nav {
-        display: none;
-    }
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+    background: var(--bg-card);
+    border-radius: 50%;
+    transition: transform var(--transition-normal);
 }
 
 .upload-icon {
-    fill: var(--text)
+    width: 40px;
+    height: 40px;
+    stroke: var(--text-secondary);
+    transition: stroke var(--transition-normal);
 }
 
-.upload-button {
-    position: relative;
-    display: flex;
-    padding: 4rem 2rem;
-    /* background: var(--primary); */
-    border-radius: 1rem;
-    /* color: var(--text); */
-    border: 4px dashed var(--primary);
-    box-sizing: border-box;
-    cursor: pointer;
-    /* margin: 5px 20px; */
-    width: 100hv;
-    /* height: 300px; */
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    transition: all ease-in-out 0.2s;
+.upload-title {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
-.upload-button:hover {
-    /* background: var(--primary-hover); */
-    /* color: var(--text-hover); */
-    border-color: var(--primary-hover);
-    cursor: pointer;
+.upload-hint {
+    margin: 0 0 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
 }
 
-.control-box {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.upload-link {
+    color: var(--accent);
+    font-weight: 500;
 }
 
-.tips {
-    padding: 5px 20px;
-    cursor: pointer;
-    user-select: none;
+.upload-formats {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 12px;
 }
-.tips-content {
-    display: none;
-    position: relative;
+
+.upload-zone input[type="file"] {
     position: absolute;
-    right: 3rem;
-    background-color: var(--bg-header);
-    padding: 2rem;
-    border-radius: 1rem;
-}
-.tips:active .tips-content {
-    display: block;
-}
-.tips:hover .tips-content {
-    display: block;
-}
-
-.show-img {
-    --size: 250px;
-    max-height: var(--size);
-    max-width: var(--size);
-    min-height: var(--size);
-    min-width: var(--size);
-    margin: 2px;
-    /* border: #7d9c90 1px solid; */
-    object-fit: cover;
-    transition: all ease-in-out 0.2s;
-    border-radius: 4px;
-}
-
-.show-img:hover {
-    transform: translateY(-2px);
-    cursor: pointer;
-    /* border-color: var(--primary-hover); */
-}
-
-input[type=file] {
-    /* border: none;
-    color: red;
-    height: 200px;
-    display: none; */
+    inset: 0;
     width: 100%;
     height: 100%;
-    position: absolute;
-    font-size: 100px;
-    left: 0;
-    top: 0;
     opacity: 0;
-    filter: alpha(opacity=0);
-    cursor: pointer
+    cursor: pointer;
 }
 
-.del-btn {
-    background-color: #F56C6C;
+/* 控制栏 */
+.control-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    padding: 24px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    margin-bottom: 32px;
 }
 
-.del-btn:hover {
-    color: white;
-    background-color: #f78989;
+.quality-control {
+    flex: 1;
+    max-width: 400px;
 }
 
-dialog button {
+.quality-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.quality-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.quality-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.quality-slider-wrapper {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.quality-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(to right, var(--accent), var(--text-muted));
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+.quality-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(110, 231, 183, 0.4);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.quality-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 2px 12px rgba(110, 231, 183, 0.6);
+}
+
+.quality-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(110, 231, 183, 0.4);
+}
+
+.quality-marks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.quality-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
 }
 
+.compress-badge {
+    display: inline-flex;
+    padding: 2px 8px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.compress-badge.original {
+    background: rgba(251, 191, 36, 0.15);
+    color: var(--warning);
+}
+
+.upload-actions {
+    display: flex;
+    align-items: center;
+}
+
+.upload-submit {
+    padding: 14px 32px;
+    font-size: 15px;
+}
+
+/* 预览区域 */
+.preview-section {
+    animation: fade-in-up 0.4s ease;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.preview-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.preview-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.clear-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.preview-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+/* 预览卡片 */
+.preview {
+    position: relative;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    animation: fade-in-up 0.3s ease backwards;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.preview:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+.preview-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+}
+
+.preview .file-name {
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: transparent;
+}
+
+.preview .file-name.success {
+    color: var(--success);
+    cursor: pointer;
+}
+
+.preview .file-name.success:hover {
+    text-decoration: underline;
+}
+
+.preview .file-name.error {
+    color: var(--error);
+}
+
+.preview .delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    border-radius: 50%;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.preview .delete-btn:hover {
+    background: var(--error);
+    transform: none;
+    box-shadow: none;
+}
+
+.preview:hover .delete-btn {
+    display: flex;
+}
+
+/* 上传进度 */
+.preview .progress-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 15, 20, 0.7);
+    backdrop-filter: blur(4px);
+}
+
+.progress-ring {
+    width: 48px;
+    height: 48px;
+    transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 4;
+}
+
+.progress-ring-fill {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 0, 126;
+    transition: stroke-dasharray 0.3s ease;
+}
+
+/* 加载动画 */
 .loading {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 100px;
-    height: 100px;
-    /* background-color: rgba(0, 0, 0, 0.2); */
-    /* border-radius: 50%; */
-    /* display: flex; */
-    /* justify-content: center; */
-    /* align-items: center; */
 }
 
-.loading-text {
-    width: 80px;
-    height: 80px;
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
     border-radius: 50%;
-    border: 10px dotted var(--primary);
-    /* font-size: 50px; */
-    animation: roate ease-in-out 3s infinite;
+    animation: spin 0.8s linear infinite;
 }
 
-.preview-box {
-    display: flex;
-    gap: 10px;
-    padding: 5px 20px;
-    flex-wrap: wrap;
-}
-
-.preview-img {
-    --size: 250px;
+/* show-img 兼容旧逻辑 */
+.show-img {
+    --size: 180px;
     max-height: var(--size);
     max-width: var(--size);
     min-height: var(--size);
     min-width: var(--size);
     object-fit: cover;
+    border-radius: var(--radius-sm);
+    transition: transform var(--transition-fast);
 }
 
-.preview {
-    position: relative;
-    border: 1px solid gray;
-    border-radius: 4px;
-}
-
-.preview .file-name {
-    font-size: 12px;
-    color: #ffffff;
-    max-width: 250px;
-    text-wrap: wrap;
-    text-align: center;
-    background: #535353;
-}
-
-.preview .success {
-    color: #67C23A;
+.show-img:hover {
+    transform: translateY(-2px);
     cursor: pointer;
 }
 
-.preview .error {
-    color: #F56C6C;
-}
+/* 响应式 */
+@media screen and (max-width: 640px) {
+    .upload-zone {
+        padding: 48px 20px;
+    }
 
-.preview .delete-btn {
-    box-sizing: border-box;
-    width: 32px;
-    height: 32px;
-    position: absolute;
-    top: 0;
-    right: 0;
-    line-height: 32px;
-    display: none;
-    border-radius: 50%;
-    background: #2e2e2e70;
-    cursor: pointer;
-    color: white;
-}
+    .upload-icon-wrapper {
+        width: 64px;
+        height: 64px;
+    }
 
-.preview .delete-btn span {
-    position: absolute;
-    left: 11px;
-    top: -2px;
-}
+    .upload-icon {
+        width: 32px;
+        height: 32px;
+    }
 
-.preview .delete-btn:hover {
-    background-color: #3d3d3d;
-}
+    .upload-title {
+        font-size: 18px;
+    }
 
-.preview:hover .delete-btn {
-    display: block;
-}
+    .control-section {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+    }
 
-.quality {
-    font-size: 0.8rem;
-    /* color: #999; */
+    .quality-control {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .upload-actions {
+        width: 100%;
+    }
+
+    .upload-submit {
+        width: 100%;
+    }
+
+    .preview-box {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+    }
 }

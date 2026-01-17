@@ -88,7 +88,7 @@ initThemeBtn();
 function changeTheme(btn, init) {
     let darkValue = getCookie(theme_cookie_key);
     let dark = darkValue == "" ? false : true;
-    
+
     if (init != true) {
         // console.log("change", darkValue, dark);
         dark = !dark;
@@ -98,6 +98,7 @@ function changeTheme(btn, init) {
 
     const root=document.querySelector(":root")
     if (dark) {
+        // 旧主题变量
         root.style.setProperty("--text","var(--light)")
         root.style.setProperty("--text-hover","var(--dark)")
         root.style.setProperty("--bg","var(--dark)")
@@ -105,31 +106,54 @@ function changeTheme(btn, init) {
         root.style.setProperty("--primary","var(--primary-dark)")
         root.style.setProperty("--primary-hover","var(--primary-light)")
         root.style.setProperty("--shadow","0px 0px 0px ragb(0,0,0,0)")
+        // 新设计系统变量
+        root.style.setProperty("--bg-primary", "#0f0f14")
+        root.style.setProperty("--bg-secondary", "#16161d")
+        root.style.setProperty("--bg-card", "#1a1a24")
+        root.style.setProperty("--bg-glass", "rgba(255, 255, 255, 0.03)")
+        root.style.setProperty("--bg-glass-hover", "rgba(255, 255, 255, 0.06)")
+        root.style.setProperty("--text-primary", "#e4e4e7")
+        root.style.setProperty("--text-secondary", "#a1a1aa")
+        root.style.setProperty("--text-muted", "#71717a")
+        root.style.setProperty("--border", "rgba(255, 255, 255, 0.08)")
+        root.style.setProperty("--border-hover", "rgba(255, 255, 255, 0.15)")
     } else {
+        // 旧主题变量
         root.style.setProperty("--text","var(--dark)")
-        root.style.setProperty("--text-hover","var(-light)")
+        root.style.setProperty("--text-hover","var(--light)")
         root.style.setProperty("--bg","var(--light)")
         root.style.setProperty("--bg-header","var(--header-light)")
         root.style.setProperty("--primary","var(--primary-light)")
         root.style.setProperty("--primary-hover","var(--primary-dark)")
         root.style.setProperty("--shadow","0 2px 4px rgba(0, 0, 0, 0.1)")
+        // 新设计系统变量
+        root.style.setProperty("--bg-primary", "#f8f8f2")
+        root.style.setProperty("--bg-secondary", "#ffffff")
+        root.style.setProperty("--bg-card", "#ffffff")
+        root.style.setProperty("--bg-glass", "rgba(0, 0, 0, 0.02)")
+        root.style.setProperty("--bg-glass-hover", "rgba(0, 0, 0, 0.05)")
+        root.style.setProperty("--text-primary", "#1a1a24")
+        root.style.setProperty("--text-secondary", "#52525b")
+        root.style.setProperty("--text-muted", "#a1a1aa")
+        root.style.setProperty("--border", "rgba(0, 0, 0, 0.08)")
+        root.style.setProperty("--border-hover", "rgba(0, 0, 0, 0.15)")
     }
 }
 
-const resetContainerMarginTop = () => {
-    let header = document.getElementsByClassName("header")[0];
-    let container = document.getElementsByClassName("container")[0];
-    if (!header || !container) {
-        return;
-    }
-    let height = header.clientHeight;
-    console.log("height", height);
-    container.style.marginTop = height + 16 + "px";
-}
+// const resetContainerMarginTop = () => {
+//     let header = document.getElementsByClassName("header")[0];
+//     let container = document.getElementsByClassName("container")[0];
+//     if (!header || !container) {
+//         return;
+//     }
+//     let height = header.clientHeight;
+//     console.log("height", height);
+//     container.style.marginTop = height + 16 + "px";
+// }
 
-window.onresize = function() {
-    resetContainerMarginTop();
-}
-window.onload = function() {
-    resetContainerMarginTop();
-}
+// window.onresize = function() {
+//     resetContainerMarginTop();
+// }
+// window.onload = function() {
+//     resetContainerMarginTop();
+// }
