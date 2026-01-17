@@ -88,7 +88,9 @@
     gap: 8px;
     font-size: 11px;
     color: rgba(255, 255, 255, 0.8);
-}</* 选择框 */
+}
+
+/* 选择框 */
 .select-checkbox {
     --size: 32px;
     position: absolute;
@@ -97,7 +99,7 @@
     width: var(--size);
     height: var(--size);
     z-index: 10;
-    opacity: 0;
+    opacity: 0.5;
     transition: opacity var(--transition-fast);
 }
 
@@ -134,7 +136,6 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    width: 100%;
 }
 
 /* 分页控件容器 */

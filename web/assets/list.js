@@ -28,13 +28,20 @@ function calc_img_width(item) {
 
 // 拖拽功能初始化
 function initDrag() {
-    detail.addEventListener('mousedown', startDrag);
-    detail.addEventListener('mousemove', drag);
-    detail.addEventListener('mouseleave', endDrag);
+    // 使用 Pointer Events API 统一处理鼠标、触摸、笔输入
+    detail.addEventListener('pointerdown', startDrag);
+    detail.addEventListener('pointermove', drag);
+    detail.addEventListener('pointerleave', endDrag);
+    detail.addEventListener('pointerup', endDrag);
+    detail.addEventListener('pointercancel', endDrag);
     detail.style.cursor = 'grab';
+    detail.style.touchAction = 'none'; // 防止页面滚动干扰拖拽
 }
 
 function startDrag(e) {
+    // 阻止默认行为（如页面滚动）
+    e.preventDefault();
+
     isDragging = true;
     dragStart = {
         x: e.clientX - imagePos.x,
@@ -42,12 +49,15 @@ function startDrag(e) {
     };
     detail.style.cursor = 'grabbing';
 
-    // 在 document 上监听 mouseup，确保拖拽结束时能正确捕获
-    document.addEventListener('mouseup', endDrag);
+    // 在 document 上监听 pointerup，确保拖拽结束时能正确捕获
+    document.addEventListener('pointerup', endDrag);
 }
 
 function drag(e) {
     if (!isDragging) return;
+
+    // 阻止默认滚动行为
+    e.preventDefault();
 
     imagePos = {
         x: e.clientX - dragStart.x,
@@ -60,8 +70,8 @@ function drag(e) {
 function endDrag() {
     isDragging = false;
     detail.style.cursor = 'grab';
-    // 移除 document 上的 mouseup 监听器
-    document.removeEventListener('mouseup', endDrag);
+    // 移除 document 上的 pointerup 监听器
+    document.removeEventListener('pointerup', endDrag);
 }
 
 function package_img(list) {
@@ -223,6 +233,7 @@ window.addEventListener('load', () => {
                 const checkbox = document.createElement("input");
                 checkbox.classList.add("select-checkbox")
                 checkbox.setAttribute("type", "checkbox")
+                checkbox.setAttribute("name", "select-pic")
                 checkbox.addEventListener('click', () => {
                     checkbox_change(checkbox, img);
                 })
