@@ -17,6 +17,7 @@ const detail = document.getElementById("detail-img");
 let isDragging = false;
 let dragStart = { x: 0, y: 0 };
 let imagePos = { x: 0, y: 0 };
+let rafId = null; // requestAnimationFrame ID
 
 function calc_img_width(item) {
     let width = item.width;
@@ -49,6 +50,9 @@ function startDrag(e) {
     };
     detail.style.cursor = 'grabbing';
 
+    // 将 pointermove 监听提升到 document，确保拖拽不丢失
+    document.addEventListener('pointermove', drag);
+
     // 在 document 上监听 pointerup，确保拖拽结束时能正确捕获
     document.addEventListener('pointerup', endDrag);
 }
@@ -64,14 +68,28 @@ function drag(e) {
         y: e.clientY - dragStart.y
     };
 
-    detail.style.transform = `translate(${imagePos.x}px, ${imagePos.y}px) scale(${scale_factor})`;
+    // 使用 requestAnimationFrame 批量更新，避免每帧多次 DOM 操作
+    if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+            detail.style.transform = `translate(${imagePos.x}px, ${imagePos.y}px) scale(${scale_factor})`;
+            rafId = null;
+        });
+    }
 }
 
 function endDrag() {
     isDragging = false;
     detail.style.cursor = 'grab';
-    // 移除 document 上的 pointerup 监听器
+
+    // 清理 document 上的监听器
+    document.removeEventListener('pointermove', drag);
     document.removeEventListener('pointerup', endDrag);
+
+    // 确保最后一次位置更新并清理 rafId
+    if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+    }
 }
 
 function package_img(list) {
