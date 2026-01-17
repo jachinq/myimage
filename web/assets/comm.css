@@ -226,7 +226,7 @@ a {
     position: fixed;
     top: 80px;
     right: 24px;
-    z-index: 1000;
+    z-index: 91000;
     display: flex;
     flex-direction: column;
     gap: 8px;

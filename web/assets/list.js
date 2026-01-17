@@ -10,17 +10,58 @@ const pageInfo = {
 let focus = null;
 let list_img = [];
 const host = ""
-const dialog = document.getElementById("dialog");
+const overlay = document.getElementById("preview-overlay");
 const detail = document.getElementById("detail-img");
+
+// 拖拽状态管理
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+let imagePos = { x: 0, y: 0 };
 
 function calc_img_width(item) {
     let width = item.width;
-    if (width > window.innerWidth) {
-        // console.log(width);
+    if (width > window.innerWidth * 0.8) {
         width = window.innerWidth * 0.8;
-        // item.scaleWidth = width;
     }
     return width;
+}
+
+// 拖拽功能初始化
+function initDrag() {
+    detail.addEventListener('mousedown', startDrag);
+    detail.addEventListener('mousemove', drag);
+    detail.addEventListener('mouseleave', endDrag);
+    detail.style.cursor = 'grab';
+}
+
+function startDrag(e) {
+    isDragging = true;
+    dragStart = {
+        x: e.clientX - imagePos.x,
+        y: e.clientY - imagePos.y
+    };
+    detail.style.cursor = 'grabbing';
+
+    // 在 document 上监听 mouseup，确保拖拽结束时能正确捕获
+    document.addEventListener('mouseup', endDrag);
+}
+
+function drag(e) {
+    if (!isDragging) return;
+
+    imagePos = {
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+    };
+
+    detail.style.transform = `translate(${imagePos.x}px, ${imagePos.y}px) scale(${scale_factor})`;
+}
+
+function endDrag() {
+    isDragging = false;
+    detail.style.cursor = 'grab';
+    // 移除 document 上的 mouseup 监听器
+    document.removeEventListener('mouseup', endDrag);
 }
 
 function package_img(list) {
@@ -45,17 +86,18 @@ function package_img(list) {
                 checkbox_change(checkbox, img);
                 return;
             }
-            const width = calc_img_width(item);
-            detail.style.width = 0;
-            dialog.showModal();
+
+            // 重置位置和缩放
+            imagePos = { x: 0, y: 0 };
+            scale_factor = 1;
+            detail.style.transform = `translate(0px, 0px) scale(1)`;
+
+            // 显示全屏遮罩层
+            overlay.classList.add('active');
             detail.setAttribute("src", item.url);
-            setTimeout(() => {
-                detail.style.width = `${width}px`;
-            }, 0);
 
             console.log(item);
             focus = item;
-            dialog.blur();
         })
 
         thumb_box.appendChild(img);
@@ -220,22 +262,21 @@ window.addEventListener('load', () => {
         console.log(selected_url);
     })
 
-    // 点击遮罩关闭弹窗
-    dialog.addEventListener('click', function (evt) {
-        if (evt.target.nodeName === 'DIALOG') this.close()
-    })
+
+    // 初始化拖拽功能
+    initDrag();
 
     document.addEventListener('keydown', evt => {
         const code = evt.key;
-        const open = dialog.getAttribute("open") != null;
+        const open = overlay.classList.contains('active');
         if (open) {
-            if (code === 'ArrowLeft') { // left
+            if (code === 'Escape') { // ESC 关闭
+                close_pic();
+            } else if (code === 'ArrowLeft') { // 左箭头 上一张
                 pre_pic();
-            }
-            else if (code == 'ArrowRight') { // right
+            } else if (code == 'ArrowRight') { // 右箭头 下一张
                 next_pic();
             }
-
         }
     });
 })
@@ -285,29 +326,27 @@ function download_pic() {
 
 let scale_factor = 1;
 function scale_pic(type) {
-    let width = 0;
     let old_scale_factor = scale_factor;
     switch (type) {
         case 1:
             scale_factor = 1;
-            width = calc_img_width(focus);
             break;
         case 2:
             scale_factor += 0.2;
-            width = calc_img_width(focus) * scale_factor;
             break;
         case 3:
             scale_factor -= 0.2;
-            width = calc_img_width(focus) * scale_factor;
             break;
     }
-    if (width < 100) {
-        scale_factor = old_scale_factor
+
+    // 限制最小缩放比例
+    if (scale_factor < 0.2) {
+        scale_factor = old_scale_factor;
         return;
     }
 
-    detail.style.width = `${width}px`;
-    // console.log(detail.style.width);
+    // 只使用 transform 处理缩放和拖拽位置
+    detail.style.transform = `translate(${imagePos.x}px, ${imagePos.y}px) scale(${scale_factor})`;
 }
 
 function show_origin_pic() {
@@ -318,9 +357,10 @@ function change_pic() {
     // console.log(focus);
     const detail = document.getElementById("detail-img");
     detail.setAttribute("src", focus.url);
-    const width = calc_img_width(focus);
-    detail.style.width = `${width}px`
-    dialog.blur();
+    // 重置拖拽位置和缩放
+    imagePos = { x: 0, y: 0 };
+    scale_factor = 1;
+    detail.style.transform = `translate(0px, 0px) scale(1)`;
 }
 
 function pre_pic() {
@@ -344,5 +384,5 @@ function next_pic() {
 }
 
 function close_pic() {
-    dialog.close();
+    overlay.classList.remove('active');
 }
