@@ -81,3 +81,6 @@ docker build -t myimage .
 docker compose up -d
 ```
 
+## 更新日志
+
+- 2026-01-18: 大幅优化整体应用页面和交互效果，拥有更好看的瀑布流图片墙了

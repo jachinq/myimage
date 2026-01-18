@@ -88,3 +88,6 @@ Run the container with docker-compose.
 docker compose up -d
 ```
 
+## Update Log
+
+- 2026-01-18: Major optimizations have been made to the overall application interface and interaction effects, resulting in a more visually appealing waterfall-style image wall.
