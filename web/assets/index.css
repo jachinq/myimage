@@ -1,3 +1,9 @@
+/* 主容器 */
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
 /* 上传区域 */
 .upload-section {
     margin-bottom: 32px;
