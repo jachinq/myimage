@@ -3,8 +3,11 @@ let open_select = false; // 开启多选
 let selected_url = [];
 
 const pageInfo = {
-    current: 1,
-    limit: 20,
+    currentPage: 1,      // 当前页码
+    limit: 20,           // 每次加载数量
+    total: 0,            // 总数量
+    loading: false,      // 加载状态标志
+    hasMore: true        // 是否有更多数据
 }
 
 let focus = null;
@@ -92,10 +95,14 @@ function endDrag() {
     }
 }
 
-function package_img(list) {
+function appendImages(list) {
     const box = document.getElementsByClassName("list-box")[0];
-    list_img = list;
-    let index = 0;
+    const startIndex = list_img.length;
+
+    // 将新数据追加到现有数据
+    list_img = list_img.concat(list);
+
+    let index = startIndex;
     for (let item of list) {
         const thumb_box = document.createElement("div");
         thumb_box.classList.add("thumb-box")
@@ -132,54 +139,114 @@ function package_img(list) {
         box.appendChild(thumb_box);
     }
 
+    // 应用懒加载
+    const lazyloadImages = box.querySelectorAll(".lazy:not(.observed)");
+    var imageObserver = new IntersectionObserver(function (entries, observer) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+                var image = entry.target;
+                image.src = image.dataset.src;
+                image.classList.remove("lazy", "observed");
+                observer.unobserve(image);
+            }
+        });
+    });
+
+    lazyloadImages.forEach(function (image) {
+        image.classList.add("observed");
+        imageObserver.observe(image);
+    });
 }
 
-function package_pageInfo(total) {
-    const box = document.getElementsByClassName("page-box")[0];
-    const currentEle = document.getElementById("current");
+function updatePageInfo(total) {
     const totalEle = document.getElementById("total");
-    totalEle.innerHTML = `共${total}`
-    let max_page = Math.floor(total / pageInfo.limit);
-    if (total % pageInfo.limit > 0) max_page++;
-    currentEle.innerHTML = `${pageInfo.current}/${max_page}`
-    pageInfo.max = max_page;
+    totalEle.innerHTML = `已加载 ${list_img.length}/${total}`;
+    pageInfo.total = total;
 }
 
-function getList() {
-    const box = document.getElementsByClassName("list-box")[0];
-    box.innerHTML = "";
-    fetch(`${host}/api/getList?current=${pageInfo.current}&limit=${pageInfo.limit}`)
+function loadMore() {
+    if (pageInfo.loading || !pageInfo.hasMore) return;
+
+    pageInfo.loading = true;
+    showLoadingState();
+
+    fetch(`${host}/api/getList?current=${pageInfo.currentPage}&limit=${pageInfo.limit}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                package_img(data.data.list)
-                package_pageInfo(data.data.total)
+                appendImages(data.data.list);
+                pageInfo.currentPage += 1;
+                pageInfo.hasMore = list_img.length < data.data.total;
+                updatePageInfo(data.data.total);
 
-                // 实现图片懒加载
-                const lazyloadImages = document.querySelectorAll(".lazy");
-                var imageObserver = new IntersectionObserver(function (entries, observer) {
-                    entries.forEach(function (entry) {
-                        if (entry.isIntersecting) {
-                            var image = entry.target;
-                            image.src = image.dataset.src;
-                            image.classList.remove("lazy");
-                            imageObserver.unobserve(image);
-                        }
-                    });
-                });
-
-                lazyloadImages.forEach(function (image) {
-                    imageObserver.observe(image);
-                });
-
+                if (!pageInfo.hasMore) {
+                    showEndState();
+                }
             } else {
                 toast("error", data.msg);
             }
+            pageInfo.loading = false;
+            hideLoadingState();
         })
-        .catch(err => console.log('Request Failed', err));
+        .catch(err => {
+            console.log('Request Failed', err);
+            pageInfo.loading = false;
+            hideLoadingState();
+        });
 }
 
-document.addEventListener('DOMContentLoaded', getList);
+function showLoadingState() {
+    let loader = document.getElementById('infinite-scroll-loader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'infinite-scroll-loader';
+        loader.className = 'loading';
+        loader.innerHTML = '<div class="loading-spinner"></div>';
+        document.querySelector('.container').appendChild(loader);
+    }
+    loader.style.display = 'flex';
+}
+
+function hideLoadingState() {
+    const loader = document.getElementById('infinite-scroll-loader');
+    if (loader) {
+        loader.style.display = 'none';
+    }
+}
+
+function showEndState() {
+    let endMsg = document.getElementById('infinite-scroll-end');
+    if (!endMsg) {
+        endMsg = document.createElement('div');
+        endMsg.id = 'infinite-scroll-end';
+        endMsg.className = 'end-message';
+        endMsg.innerHTML = '<p>没有更多图片了</p>';
+        document.querySelector('.container').appendChild(endMsg);
+    }
+    endMsg.style.display = 'block';
+}
+
+function initInfiniteScroll() {
+    const sentinel = document.createElement('div');
+    sentinel.id = 'scroll-sentinel';
+    sentinel.style.height = '1px';
+    document.querySelector('.container').appendChild(sentinel);
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && pageInfo.hasMore && !pageInfo.loading) {
+                loadMore();
+            }
+        });
+    }, { threshold: 0 });
+
+    observer.observe(sentinel);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initInfiniteScroll();
+    loadMore();
+});
 
 function selected_picture(checkbox, img) {
     const current_url = img.getAttribute("src");
@@ -213,20 +280,6 @@ function checkbox_change(checkbox, img) {
 }
 
 window.addEventListener('load', () => {
-    document.getElementById("pre_page").addEventListener("click", () => {
-        if (pageInfo.current - 1 <= 0) {
-            return
-        }
-        pageInfo.current -= 1;
-        getList();
-    })
-    document.getElementById("next_page").addEventListener("click", () => {
-        if (pageInfo.current + 1 > pageInfo.max) {
-            return
-        }
-        pageInfo.current += 1;
-        getList();
-    })
     const select_pic = document.getElementById("select-pic");
     const select_del = document.getElementById("select-del");
     const select_all = document.getElementById("select-all");

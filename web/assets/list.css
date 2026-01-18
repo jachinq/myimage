@@ -498,6 +498,27 @@
     animation: spin 1s linear infinite;
 }
 
+/* 无限滚动加载器 */
+#infinite-scroll-loader {
+    margin: 2rem 0;
+}
+
+/* 结束状态 */
+.end-message {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.end-message p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
 /* ============================================
    辅助功能
 ============================================ */
