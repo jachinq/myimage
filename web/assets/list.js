@@ -16,6 +16,20 @@ const host = ""
 const overlay = document.getElementById("preview-overlay");
 const detail = document.getElementById("detail-img");
 
+// 全局懒加载观察器
+const lazyImageObserver = new IntersectionObserver(function (entries, observer) {
+    entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+            const image = entry.target;
+            image.src = image.dataset.src;
+            image.classList.remove("lazy");
+            observer.unobserve(image);
+        }
+    });
+}, {
+    rootMargin: '100px' // 提前 100px 开始加载
+});
+
 // 拖拽状态管理
 let isDragging = false;
 let dragStart = { x: 0, y: 0 };
@@ -137,25 +151,10 @@ function appendImages(list) {
 
         thumb_box.appendChild(img);
         box.appendChild(thumb_box);
+
+        // 使用全局观察器观察新添加的图片
+        lazyImageObserver.observe(img);
     }
-
-    // 应用懒加载
-    const lazyloadImages = box.querySelectorAll(".lazy:not(.observed)");
-    var imageObserver = new IntersectionObserver(function (entries, observer) {
-        entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
-                var image = entry.target;
-                image.src = image.dataset.src;
-                image.classList.remove("lazy", "observed");
-                observer.unobserve(image);
-            }
-        });
-    });
-
-    lazyloadImages.forEach(function (image) {
-        image.classList.add("observed");
-        imageObserver.observe(image);
-    });
 }
 
 function updatePageInfo(total) {
